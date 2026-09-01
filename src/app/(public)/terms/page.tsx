@@ -1,0 +1,2 @@
+export const metadata = { title: "Terms" };
+export default function TermsPage() { return <div className="page-shell"><article className="container"><div className="eyebrow">Policy</div><h1 className="page-title">Terms of use</h1><p className="lede">Competition eligibility, fair-play, result correction, content rights and account rules will be reviewed for the launch jurisdiction before production. This page currently records the required policy surface.</p></article></div>; }

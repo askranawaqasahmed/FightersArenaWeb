@@ -1,0 +1,318 @@
+{
+  "1_live_gamer_match": {
+    "board": 7,
+    "assigned": true,
+    "version": "2026-08-21T13:23:06.499Z/1/37dbf897-d230-4e84-afc6-68e9d5fa738f/live/2026-08-21T13:23:06.615Z/1:2:|2:1:",
+    "tournament": "Iron Fist Weekend 2026",
+    "division": "Tekken 8 Open",
+    "game": "Tekken 8",
+    "matchCode": "R1-M1",
+    "round": "Semifinals",
+    "lane": "main",
+    "bestOf": 5,
+    "status": "live",
+    "startedAt": "2026-08-21T13:23:06.599Z",
+    "endedAt": null,
+    "featuredSlot": 1,
+    "winnerSlot": null,
+    "players": [
+      {
+        "slot": 1,
+        "name": "VIPER",
+        "score": 2,
+        "outcome": null,
+        "winner": false,
+        "type": "gamer",
+        "handle": "VIPER",
+        "avatarUrl": "/api/v1/media/avatars/viper.png",
+        "countryCode": "PK",
+        "country": "Pakistan",
+        "city": "Lahore",
+        "bio": "Two-time national Tekken finalist from Lahore. Known for aggressive Mishima play.",
+        "rankingPoints": 2480,
+        "games": [
+          {
+            "game": "Tekken 8",
+            "inGameName": "V1PER",
+            "primaryRole": "Rushdown",
+            "platform": "PS5"
+          }
+        ],
+        "record": {
+          "played": 0,
+          "wins": 0,
+          "losses": 0,
+          "points": 0
+        },
+        "team": null
+      },
+      {
+        "slot": 2,
+        "name": "FROST",
+        "score": 1,
+        "outcome": null,
+        "winner": false,
+        "type": "gamer",
+        "handle": "FROST",
+        "avatarUrl": "/api/v1/media/avatars/frost.png",
+        "countryCode": "PK",
+        "country": "Pakistan",
+        "city": "Lahore",
+        "bio": "Patient defensive player with a deep counter-hit game.",
+        "rankingPoints": 1840,
+        "games": [
+          {
+            "game": "Tekken 8",
+            "inGameName": "FR0ST",
+            "primaryRole": "Defensive",
+            "platform": "PS5"
+          }
+        ],
+        "record": {
+          "played": 0,
+          "wins": 0,
+          "losses": 0,
+          "points": 0
+        },
+        "team": null
+      }
+    ]
+  },
+  "2_final_gamer_match": {
+    "board": 7,
+    "assigned": true,
+    "version": "2026-08-21T13:23:06.649Z/2/cca0804e-f6e4-453b-b74b-168d5db0263a/final/2026-08-21T13:23:06.637Z/1:1:loss|2:3:win",
+    "tournament": "Iron Fist Weekend 2026",
+    "division": "Tekken 8 Open",
+    "game": "Tekken 8",
+    "matchCode": "R1-M2",
+    "round": "Semifinals",
+    "lane": "main",
+    "bestOf": 5,
+    "status": "final",
+    "startedAt": "2026-08-21T13:23:06.631Z",
+    "endedAt": "2026-08-21T13:23:06.637Z",
+    "featuredSlot": 2,
+    "winnerSlot": 2,
+    "players": [
+      {
+        "slot": 1,
+        "name": "TITAN",
+        "score": 1,
+        "outcome": "loss",
+        "winner": false,
+        "type": "gamer",
+        "handle": "TITAN",
+        "avatarUrl": "/api/v1/media/avatars/titan.png",
+        "countryCode": "PK",
+        "country": "Pakistan",
+        "city": "Lahore",
+        "bio": "Karachi-based grappler specialist and 2025 city champion.",
+        "rankingPoints": 2310,
+        "games": [
+          {
+            "game": "Tekken 8",
+            "inGameName": "T1TAN",
+            "primaryRole": "Grappler",
+            "platform": "PC"
+          }
+        ],
+        "record": {
+          "played": 1,
+          "wins": 0,
+          "losses": 1,
+          "points": 0
+        },
+        "team": null
+      },
+      {
+        "slot": 2,
+        "name": "RAVEN",
+        "score": 3,
+        "outcome": "win",
+        "winner": true,
+        "type": "gamer",
+        "handle": "RAVEN",
+        "avatarUrl": "/api/v1/media/avatars/raven.png",
+        "countryCode": "PK",
+        "country": "Pakistan",
+        "city": "Lahore",
+        "bio": "Rising Tekken talent, first woman to reach the national top eight.",
+        "rankingPoints": 1975,
+        "games": [
+          {
+            "game": "Tekken 8",
+            "inGameName": "RAVEN_X",
+            "primaryRole": "Zoner",
+            "platform": "PC"
+          }
+        ],
+        "record": {
+          "played": 1,
+          "wins": 1,
+          "losses": 0,
+          "points": 3
+        },
+        "team": null
+      }
+    ]
+  },
+  "3_unresolved_tbd_match": {
+    "board": 7,
+    "assigned": true,
+    "version": "2026-08-21T13:23:06.657Z/1/2d2cac66-42e2-4724-aab0-1f608f5c436e/scheduled/2026-08-21T13:23:06.499Z/1:0:|2:0:",
+    "tournament": "Iron Fist Weekend 2026",
+    "division": "Tekken 8 Open",
+    "game": "Tekken 8",
+    "matchCode": "R2-M1",
+    "round": "Grand Final",
+    "lane": "main",
+    "bestOf": 5,
+    "status": "scheduled",
+    "startedAt": null,
+    "endedAt": null,
+    "featuredSlot": 1,
+    "winnerSlot": null,
+    "players": [
+      {
+        "slot": 1,
+        "name": null,
+        "score": 0,
+        "outcome": null,
+        "winner": false,
+        "type": null,
+        "handle": null,
+        "avatarUrl": null,
+        "countryCode": null,
+        "country": null,
+        "city": null,
+        "bio": null,
+        "rankingPoints": null,
+        "games": [],
+        "record": null,
+        "team": null
+      },
+      {
+        "slot": 2,
+        "name": "RAVEN",
+        "score": 0,
+        "outcome": null,
+        "winner": false,
+        "type": "gamer",
+        "handle": "RAVEN",
+        "avatarUrl": "/api/v1/media/avatars/raven.png",
+        "countryCode": "PK",
+        "country": "Pakistan",
+        "city": "Lahore",
+        "bio": "Rising Tekken talent, first woman to reach the national top eight.",
+        "rankingPoints": 1975,
+        "games": [
+          {
+            "game": "Tekken 8",
+            "inGameName": "RAVEN_X",
+            "primaryRole": "Zoner",
+            "platform": "PC"
+          }
+        ],
+        "record": {
+          "played": 1,
+          "wins": 1,
+          "losses": 0,
+          "points": 3
+        },
+        "team": null
+      }
+    ]
+  },
+  "4_live_team_match": {
+    "board": 7,
+    "assigned": true,
+    "version": "2026-08-21T13:23:06.702Z/2/ea68af57-6cef-4844-8092-cc23dc34ef32/live/2026-08-21T13:23:06.700Z/1:0:|2:1:",
+    "tournament": "Iron Fist Weekend 2026",
+    "division": "VALORANT Team Cup",
+    "game": "VALORANT",
+    "matchCode": "R1-M1",
+    "round": "Grand Final",
+    "lane": "main",
+    "bestOf": 3,
+    "status": "live",
+    "startedAt": "2026-08-21T13:23:06.696Z",
+    "endedAt": null,
+    "featuredSlot": 2,
+    "winnerSlot": null,
+    "players": [
+      {
+        "slot": 1,
+        "name": "Karachi Kings",
+        "score": 0,
+        "outcome": null,
+        "winner": false,
+        "type": "team",
+        "handle": "KKS",
+        "avatarUrl": "/api/v1/media/logos/karachi-kings.png",
+        "countryCode": "PK",
+        "country": "Pakistan",
+        "city": null,
+        "bio": null,
+        "rankingPoints": null,
+        "games": [],
+        "record": {
+          "played": 0,
+          "wins": 0,
+          "losses": 0,
+          "points": 0
+        },
+        "team": {
+          "name": "Karachi Kings",
+          "tag": "KKS",
+          "logoUrl": "/api/v1/media/logos/karachi-kings.png"
+        }
+      },
+      {
+        "slot": 2,
+        "name": "Lahore Lions",
+        "score": 1,
+        "outcome": null,
+        "winner": false,
+        "type": "team",
+        "handle": "LLN",
+        "avatarUrl": "/api/v1/media/logos/lahore-lions.png",
+        "countryCode": "PK",
+        "country": "Pakistan",
+        "city": null,
+        "bio": null,
+        "rankingPoints": null,
+        "games": [],
+        "record": {
+          "played": 0,
+          "wins": 0,
+          "losses": 0,
+          "points": 0
+        },
+        "team": {
+          "name": "Lahore Lions",
+          "tag": "LLN",
+          "logoUrl": "/api/v1/media/logos/lahore-lions.png"
+        }
+      }
+    ]
+  },
+  "5_unassigned_board": {
+    "board": 7,
+    "assigned": false,
+    "version": "2026-08-21T13:23:06.710Z/-/none/-/0/",
+    "tournament": null,
+    "division": null,
+    "game": null,
+    "matchCode": null,
+    "round": null,
+    "lane": null,
+    "bestOf": null,
+    "status": null,
+    "startedAt": null,
+    "endedAt": null,
+    "featuredSlot": null,
+    "winnerSlot": null,
+    "players": []
+  }
+}

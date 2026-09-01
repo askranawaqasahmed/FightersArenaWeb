@@ -1,0 +1,1 @@
+ALTER TABLE "games" ADD COLUMN "genre" varchar(80) DEFAULT 'Other' NOT NULL;

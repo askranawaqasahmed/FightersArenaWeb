@@ -1,0 +1,1 @@
+ALTER TABLE "divisions" ADD COLUMN "competition_type" "competition_type" DEFAULT 'tournament' NOT NULL;

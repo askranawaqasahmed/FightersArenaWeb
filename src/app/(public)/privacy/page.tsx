@@ -1,0 +1,2 @@
+export const metadata = { title: "Privacy" };
+export default function PrivacyPage() { return <div className="page-shell"><article className="container"><div className="eyebrow">Policy</div><h1 className="page-title">Privacy</h1><p className="lede">eFightersArena separates public competitive records from private identity and contact information. Gamers control profile visibility and sponsor access. A jurisdiction-reviewed policy will replace this implementation notice before production launch.</p></article></div>; }

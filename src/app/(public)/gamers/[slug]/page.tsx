@@ -1,0 +1,162 @@
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { BadgeCheck, CalendarDays, Download, Gamepad2, MapPin, ShieldCheck, Trophy, Users } from "lucide-react";
+import { getPublicGamer } from "@/lib/public-gamer-data";
+import { publicStatusLabel } from "@/lib/public-tournament-data";
+
+export const dynamic = "force-dynamic";
+
+function placement(rank: number | null) {
+  if (!rank) return "—";
+  const mod100 = rank % 100;
+  const suffix = mod100 >= 11 && mod100 <= 13 ? "th"
+    : rank % 10 === 1 ? "st"
+      : rank % 10 === 2 ? "nd"
+        : rank % 10 === 3 ? "rd" : "th";
+  return `${rank}${suffix}`;
+}
+
+function formatDate(value: string | null) {
+  if (!value) return "Date TBA";
+  return new Date(value).toLocaleDateString("en-PK", { day: "2-digit", month: "short", year: "numeric" });
+}
+
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
+  const gamer = await getPublicGamer((await params).slug);
+  if (!gamer) return { title: "Player" };
+  return { title: `${gamer.handle} — ${gamer.name}`, description: gamer.bio ?? undefined };
+}
+
+export default async function GamerProfilePage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  const gamer = await getPublicGamer(slug);
+  if (!gamer) notFound();
+  const location = [gamer.city, gamer.country].filter(Boolean).join(", ");
+
+  return (
+    <div className="page-shell">
+      <div className="container">
+        <section className="card profile-hero">
+          {gamer.avatarUrl
+            // eslint-disable-next-line @next/next/no-img-element -- operator-uploaded avatar served from our own media route
+            ? <img className="avatar avatar-image" src={gamer.avatarUrl} alt={gamer.name} />
+            : <div className="avatar">{gamer.initials}</div>}
+          <div>
+            <div className="eyebrow">National rank #{gamer.rank}</div>
+            <h1 style={{ margin: "7px 0", fontSize: 38 }}>
+              {gamer.handle} {gamer.verified && <BadgeCheck className="verified" size={23} />}
+            </h1>
+            <div className="muted">
+              {gamer.name}
+              {location && <> · <MapPin size={13} /> {location}</>}
+              {gamer.game && <> · {gamer.game}</>}
+            </div>
+            {gamer.bio && <p className="player-bio">{gamer.bio}</p>}
+          </div>
+          <Link className="button button-primary" href={`/api/v1/gamers/${gamer.slug}/profile.pdf`}>
+            <Download size={16} /> Download profile
+          </Link>
+        </section>
+
+        <section className="performance-grid">
+          <article className="card performance-card"><Gamepad2 className="blue" /><span>Matches played</span><strong>{gamer.totals.played}</strong></article>
+          <article className="card performance-card"><Trophy className="green" /><span>Won</span><strong>{gamer.totals.wins}</strong></article>
+          <article className="card performance-card"><ShieldCheck /><span>Lost</span><strong>{gamer.totals.losses}</strong></article>
+          <article className="card performance-card"><BadgeCheck className="blue" /><span>Ranking points</span><strong>{gamer.points.toLocaleString()}</strong></article>
+        </section>
+
+        <div className="profile-grid">
+          <div className="card panel">
+            <h2 className="panel-title"><Trophy size={17} /> Competition record</h2>
+            {gamer.events.length === 0 ? (
+              <div className="account-empty compact">
+                <h3>No public competitions yet</h3>
+                <p className="muted">Events appear here once this player is entered into a published tournament.</p>
+              </div>
+            ) : (
+              <div className="table-scroll">
+                <table className="data-table player-results">
+                  <thead><tr><th>Date</th><th>Event</th><th>Place</th><th>Record</th><th>Points</th></tr></thead>
+                  <tbody>
+                    {gamer.events.map((event) => (
+                      <tr key={`${event.tournamentSlug}-${event.divisionName}`}>
+                        <td><CalendarDays size={13} /> {formatDate(event.startsAt)}</td>
+                        <td>
+                          <Link href={`/tournaments/${event.tournamentSlug}`}><strong>{event.tournamentName}</strong></Link>
+                          <div className="muted">{event.gameName} · {event.divisionName}</div>
+                          <span className={`status ${event.status === "live" ? "live" : ""}`}>
+                            {event.status === "live" && <span className="live-dot" />}{publicStatusLabel(event.status)}
+                          </span>
+                        </td>
+                        <td><strong className={event.rank === 1 ? "green" : ""}>{placement(event.rank)}</strong></td>
+                        <td><strong>{event.wins}W</strong> · {event.losses}L{event.draws ? ` · ${event.draws}D` : ""}</td>
+                        <td>{event.points}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {gamer.placements.length > 0 && (
+              <>
+                <h2 className="panel-title" style={{ marginTop: 28 }}><BadgeCheck size={17} /> Final placements</h2>
+                {gamer.placements.map((entry) => (
+                  <div className="achievement" key={`${entry.tournamentName}-${entry.divisionName}-${entry.capturedAt}`}>
+                    <div><strong>{entry.tournamentName}</strong><div className="muted">{entry.divisionName}</div></div>
+                    <strong className={entry.finalRank === 1 ? "green" : undefined}>{placement(entry.finalRank)}</strong>
+                  </div>
+                ))}
+              </>
+            )}
+          </div>
+
+          <aside className="card panel">
+            <h2 className="panel-title"><ShieldCheck size={17} /> Profile integrity</h2>
+            <p className="muted">Identity, game handles and placements are reviewed by eFightersArena.</p>
+            <div className="achievement"><span>Verification</span><strong className={gamer.verified ? "green" : undefined}>{gamer.verified ? "Verified" : "Unverified"}</strong></div>
+            <div className="achievement"><span>Ranking points</span><strong className="green">{gamer.points.toLocaleString()}</strong></div>
+            <div className="achievement"><span>Events entered</span><strong>{gamer.totals.events}</strong></div>
+            <div className="achievement"><span>Titles won</span><strong>{gamer.totals.titles}</strong></div>
+            <div className="achievement"><span>Player since</span><strong>{gamer.memberSince}</strong></div>
+
+            {gamer.games.length > 0 && (
+              <>
+                <h2 className="panel-title" style={{ marginTop: 24 }}><Gamepad2 size={17} /> Game identities</h2>
+                {gamer.games.map((entry) => (
+                  <div className="achievement" key={entry.game}>
+                    <div><strong>{entry.game}</strong><div className="muted">{[entry.primaryRole, entry.platform].filter(Boolean).join(" · ") || "In-game name"}</div></div>
+                    <strong>{entry.inGameName}</strong>
+                  </div>
+                ))}
+              </>
+            )}
+
+            {gamer.teams.length > 0 && (
+              <>
+                <h2 className="panel-title" style={{ marginTop: 24 }}><Users size={17} /> Teams</h2>
+                {gamer.teams.map((team) => (
+                  <div className="achievement" key={team.slug}>
+                    <div><strong>{team.name}</strong><div className="muted">{team.isLeader ? "Team leader" : team.role}</div></div>
+                    <strong>{team.tag}</strong>
+                  </div>
+                ))}
+              </>
+            )}
+
+            {gamer.sponsors.length > 0 && (
+              <>
+                <h2 className="panel-title" style={{ marginTop: 24 }}><Trophy size={17} /> Sponsors</h2>
+                {gamer.sponsors.map((sponsor) => (
+                  <div className="achievement" key={sponsor.name}>
+                    <div><strong>{sponsor.name}</strong>{sponsor.category && <div className="muted">{sponsor.category}</div>}</div>
+                  </div>
+                ))}
+              </>
+            )}
+          </aside>
+        </div>
+      </div>
+    </div>
+  );
+}
