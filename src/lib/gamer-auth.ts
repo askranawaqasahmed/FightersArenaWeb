@@ -4,23 +4,40 @@ import { and, eq, gt, isNull } from "drizzle-orm";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { db } from "@/db/client";
-import { sessions, userIdentities, users } from "@/db/schema";
+import { gamerCredentials, sessions, userIdentities, users } from "@/db/schema";
 import { verifyAccessToken } from "@/lib/auth";
 
-export type GamerSession = { userId: string; sessionId: string; phone: string };
+export type GamerSession = {
+  userId: string;
+  sessionId: string;
+  phone: string | null;
+  email: string | null;
+  mustChangePassword: boolean;
+};
 
 export async function getGamerSessionFromToken(token: string | undefined): Promise<GamerSession | null> {
   if (!token) return null;
   try {
     const payload = await verifyAccessToken(token);
     if (payload.accountType !== "gamer" || !payload.sub || typeof payload.sid !== "string") return null;
-    const [account] = await db.select({ userId: users.id, sessionId: sessions.id, phone: userIdentities.normalizedValue })
+    const [account] = await db.select({ userId: users.id, sessionId: sessions.id })
       .from(users)
       .innerJoin(sessions, and(eq(sessions.id, payload.sid), eq(sessions.userId, users.id), isNull(sessions.revokedAt), gt(sessions.expiresAt, new Date())))
-      .innerJoin(userIdentities, and(eq(userIdentities.userId, users.id), eq(userIdentities.type, "phone")))
       .where(and(eq(users.id, payload.sub), eq(users.status, "active")))
       .limit(1);
-    return account ?? null;
+    if (!account) return null;
+
+    const identities = await db.select({ type: userIdentities.type, value: userIdentities.normalizedValue })
+      .from(userIdentities).where(eq(userIdentities.userId, account.userId));
+    const [credentials] = await db.select({ mustChangePassword: gamerCredentials.mustChangePassword })
+      .from(gamerCredentials).where(eq(gamerCredentials.userId, account.userId)).limit(1);
+
+    return {
+      ...account,
+      phone: identities.find((identity) => identity.type === "phone")?.value ?? null,
+      email: identities.find((identity) => identity.type === "email")?.value ?? null,
+      mustChangePassword: credentials?.mustChangePassword ?? false,
+    };
   } catch {
     return null;
   }

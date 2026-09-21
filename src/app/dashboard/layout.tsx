@@ -6,5 +6,5 @@ import { requireGamer } from "@/lib/gamer-auth";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const account = await requireGamer();
-  return <div className="account-shell"><header className="account-header"><div className="container account-header-inner"><Brand /><div className="header-actions"><span className="admin-identity">{account.phone}</span><Link className="button button-secondary button-small" href="/gamers">Player rankings <ExternalLink size={13} /></Link><LogoutButton /></div></div></header>{children}</div>;
+  return <div className="account-shell"><header className="account-header"><div className="container account-header-inner"><Brand /><nav className="account-nav"><Link href="/dashboard">Overview</Link><Link href="/dashboard/profile">Edit profile</Link><Link href="/dashboard/settings">Account</Link></nav><div className="header-actions"><span className="admin-identity">{account.email ?? account.phone}</span><Link className="button button-secondary button-small" href="/gamers">Player rankings <ExternalLink size={13} /></Link><LogoutButton /></div></div></header>{children}</div>;
 }

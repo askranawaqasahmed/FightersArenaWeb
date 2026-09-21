@@ -5,11 +5,15 @@ import { authChallenges, sessions, userIdentities, users } from "@/db/schema";
 import { apiData, apiProblem, invalidInput, normalizePhone } from "@/lib/api";
 import { createAccessToken, createOpaqueToken, hashSecret } from "@/lib/auth";
 import { addDays } from "@/lib/date";
+import { env } from "@/lib/env";
 
 const requestSchema = z.object({ phone: z.string(), challengeId: z.string().uuid(), code: z.string().regex(/^\d{6}$/) });
 
 export async function POST(request: Request) {
   try {
+    if (env.NODE_ENV === "production") {
+      return apiProblem(404, "NOT_FOUND", "Not found", "This endpoint is not available.");
+    }
     const input = requestSchema.parse(await request.json());
     let phone: string;
     try { phone = normalizePhone(input.phone); } catch { return apiProblem(422, "INVALID_PHONE", "Invalid phone number", "Use a valid international mobile number."); }

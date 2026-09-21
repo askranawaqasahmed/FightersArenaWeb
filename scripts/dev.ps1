@@ -48,6 +48,8 @@ function Start-Stack {
         if ($LASTEXITCODE -ne 0) { throw "Database migrations failed. Verify DATABASE_URL and that local PostgreSQL is running." }
         & npm.cmd run db:seed
         if ($LASTEXITCODE -ne 0) { throw "Database seeding failed." }
+        & npm.cmd run db:seed:content
+        if ($LASTEXITCODE -ne 0) { throw "Content seeding failed." }
 
         $serverProcess = Start-Process -FilePath "cmd.exe" `
             -ArgumentList "/d", "/s", "/c", "npm.cmd run dev" `
