@@ -6,6 +6,14 @@ export function slugify(value: string) {
   return value.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 }
 
+export const LOGIN_EMAIL_DOMAIN = "fightersarena.com";
+
+/** Default portal login address for a gamer tag, e.g. "Hazz" -> hazz@fightersarena.com */
+export function loginEmailForHandle(handle: string) {
+  const local = handle.toLowerCase().replace(/[^a-z0-9]/g, "");
+  return `${local || "player"}@${LOGIN_EMAIL_DOMAIN}`;
+}
+
 type DbOrTransaction = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 export async function uniqueProfileSlug(tx: DbOrTransaction, base: string) {

@@ -14,23 +14,11 @@ import {
   standings,
   tournaments,
 } from "@/db/schema";
-import { requireGamer } from "@/lib/gamer-auth";
+import { requireGamerWithOwnPassword } from "@/lib/gamer-guard";
+import { placementLabel } from "@/lib/placement";
 import { ProfilePhotoUploader } from "@/components/profile-photo-uploader";
 
-function placement(rank: number | null) {
-  if (!rank) return "—";
-  const mod100 = rank % 100;
-  const suffix = mod100 >= 11 && mod100 <= 13
-    ? "th"
-    : rank % 10 === 1
-      ? "st"
-      : rank % 10 === 2
-        ? "nd"
-        : rank % 10 === 3
-          ? "rd"
-          : "th";
-  return `${rank}${suffix}`;
-}
+const placement = (rank: number | null) => placementLabel(rank);
 
 function formatDate(value: Date | null) {
   return value?.toLocaleDateString("en-PK", {
@@ -41,7 +29,7 @@ function formatDate(value: Date | null) {
 }
 
 export default async function DashboardPage() {
-  const account = await requireGamer();
+  const account = await requireGamerWithOwnPassword();
   const [profile] = await db
     .select({
       id: gamerProfiles.id,
@@ -155,7 +143,7 @@ export default async function DashboardPage() {
         <div className="player-identity">
           <span>Player since</span><strong>{profile.createdAt.getFullYear()}</strong>
           <span>In-game ID</span><strong>{profile.inGameName ?? profile.handle}</strong>
-          <span>Mobile</span><strong>{account.phone}</strong>
+          <span>{account.email ? "Email" : "Mobile"}</span><strong>{account.email ?? account.phone ?? "—"}</strong>
         </div>
       </section>
 

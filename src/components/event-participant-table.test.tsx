@@ -4,7 +4,8 @@ import "@testing-library/jest-dom/vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { EventParticipantTable } from "./event-participant-table";
-import { adminEvents, type AdminEventCompetition } from "@/lib/admin-events";
+import { type AdminEventCompetition } from "@/lib/admin-events";
+import { adminEvents } from "@/lib/admin-events.fixture";
 
 const refresh = vi.fn();
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh }) }));

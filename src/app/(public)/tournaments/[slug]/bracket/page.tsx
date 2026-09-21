@@ -21,10 +21,11 @@ export default async function TournamentBracketPage({
 }) {
   const { slug } = await params;
   const requestedDivision = (await searchParams).division;
+  const detail = await getPublicTournament(slug);
+  // An event recorded without a bracket has no bracket page.
+  if (!detail || !detail.hasBracket) notFound();
   const view = await getPublicBracket(slug, requestedDivision);
   if (!view) notFound();
-  const detail = await getPublicTournament(slug);
-  if (!detail) notFound();
   const isLive = view.division.status === "live";
 
   return (

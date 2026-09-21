@@ -4,6 +4,7 @@ import {
   cities,
   countries,
   divisions,
+  gamerAchievements,
   gamerGames,
   gamerProfiles,
   games,
@@ -17,6 +18,7 @@ import {
   tournamentParticipantSnapshots,
   tournaments,
 } from "@/db/schema";
+import { isPodium, isTitle } from "@/lib/placement";
 
 /** Only fully public profiles are exposed. "sponsors" visibility is not general-public. */
 const publicVisibility = "public" as const;
@@ -52,13 +54,35 @@ export type PublicGamerEvent = {
   points: number;
 };
 
+export type PublicGamerPlacement = {
+  tournamentSlug: string;
+  tournamentName: string;
+  divisionName: string;
+  gameName: string;
+  competitionType: string;
+  finalRank: number | null;
+  placementLabel: string | null;
+  year: number | null;
+  datePrecision: string;
+  capturedAt: string;
+};
+
+export type PublicGamerAchievement = {
+  category: string;
+  title: string;
+  detail: string | null;
+  gameName: string | null;
+  yearLabel: string | null;
+};
+
 export type PublicGamerProfile = PublicGamerSummary & {
   bio: string | null;
   memberSince: number;
   games: Array<{ game: string; inGameName: string; primaryRole: string | null; platform: string | null; verified: boolean }>;
-  totals: { events: number; played: number; wins: number; losses: number; titles: number };
+  totals: { events: number; played: number; wins: number; losses: number; titles: number; podiums: number };
   events: PublicGamerEvent[];
-  placements: Array<{ tournamentName: string; divisionName: string; finalRank: number | null; capturedAt: string }>;
+  placements: PublicGamerPlacement[];
+  achievements: PublicGamerAchievement[];
   sponsors: Array<{ name: string; category: string | null; logoUrl: string | null }>;
   teams: Array<{ slug: string; name: string; tag: string; logoUrl: string | null; role: string; isLeader: boolean }>;
 };
@@ -182,6 +206,7 @@ async function getGamerProfileData(
   const eventRows = await executor
     .select({
       registrationId: registrations.id,
+      divisionId: divisions.id,
       tournamentSlug: tournaments.slug,
       tournamentName: tournaments.name,
       competitionType: tournaments.competitionType,
@@ -249,19 +274,40 @@ async function getGamerProfileData(
 
   const placementRows = await executor
     .select({
+      divisionId: tournamentParticipantSnapshots.divisionId,
+      tournamentSlug: tournaments.slug,
       tournamentName: tournaments.name,
+      competitionType: tournaments.competitionType,
+      startsAt: tournaments.startsAt,
+      datePrecision: tournaments.datePrecision,
       divisionName: divisions.name,
+      gameName: games.name,
       finalRank: tournamentParticipantSnapshots.finalRank,
+      placementLabel: tournamentParticipantSnapshots.placementLabel,
       capturedAt: tournamentParticipantSnapshots.capturedAt,
     })
     .from(tournamentParticipantSnapshots)
     .innerJoin(tournaments, eq(tournaments.id, tournamentParticipantSnapshots.tournamentId))
     .innerJoin(divisions, eq(divisions.id, tournamentParticipantSnapshots.divisionId))
+    .innerJoin(games, eq(games.id, divisions.gameId))
     .where(and(
       eq(tournamentParticipantSnapshots.participantId, profile.id),
       eq(tournamentParticipantSnapshots.participantType, "gamer"),
     ))
-    .orderBy(desc(tournamentParticipantSnapshots.capturedAt));
+    .orderBy(sql`${tournaments.startsAt} desc nulls last`, desc(tournamentParticipantSnapshots.capturedAt));
+
+  const achievementRows = await executor
+    .select({
+      category: gamerAchievements.category,
+      title: gamerAchievements.title,
+      detail: gamerAchievements.detail,
+      gameName: games.name,
+      yearLabel: gamerAchievements.yearLabel,
+    })
+    .from(gamerAchievements)
+    .leftJoin(games, eq(games.id, gamerAchievements.gameId))
+    .where(eq(gamerAchievements.gamerId, profile.id))
+    .orderBy(asc(gamerAchievements.category), asc(gamerAchievements.sequence));
 
   const sponsorRows = await executor
     .select({ name: sponsors.name, category: sponsors.category, logoUrl: sponsors.logoUrl })
@@ -290,13 +336,41 @@ async function getGamerProfileData(
       eq(teamMemberships.status, "active"),
     ));
 
-  const totals = events.reduce((carry, event) => ({
+  const placements: PublicGamerPlacement[] = placementRows.map((row) => ({
+    tournamentSlug: row.tournamentSlug,
+    tournamentName: row.tournamentName,
+    divisionName: row.divisionName,
+    gameName: row.gameName,
+    competitionType: row.competitionType,
+    finalRank: row.finalRank,
+    placementLabel: row.placementLabel,
+    year: row.datePrecision === "unknown" ? null : row.startsAt?.getFullYear() ?? null,
+    datePrecision: row.datePrecision,
+    capturedAt: row.capturedAt.toISOString(),
+  }));
+
+  // Events and titles span both live competition records and imported historical placements.
+  // A division counted from a registration must not be counted again from its snapshot.
+  const base = events.reduce((carry, event) => ({
     events: carry.events + 1,
     played: carry.played + event.played,
     wins: carry.wins + event.wins,
     losses: carry.losses + event.losses,
-    titles: carry.titles + (event.rank === 1 ? 1 : 0),
-  }), { events: 0, played: 0, wins: 0, losses: 0, titles: 0 });
+    titles: carry.titles + (isTitle(event.rank) ? 1 : 0),
+    podiums: carry.podiums + (isPodium(event.rank) ? 1 : 0),
+  }), { events: 0, played: 0, wins: 0, losses: 0, titles: 0, podiums: 0 });
+
+  const registeredDivisionIds = new Set(eventRows.map((row) => row.divisionId));
+  const totals = placementRows.reduce((carry, row) => (
+    registeredDivisionIds.has(row.divisionId)
+      ? carry
+      : {
+        ...carry,
+        events: carry.events + 1,
+        titles: carry.titles + (isTitle(row.finalRank) ? 1 : 0),
+        podiums: carry.podiums + (isPodium(row.finalRank) ? 1 : 0),
+      }
+  ), base);
 
   return {
     slug: profile.slug,
@@ -316,12 +390,8 @@ async function getGamerProfileData(
     games: gameRows,
     totals,
     events,
-    placements: placementRows.map((row) => ({
-      tournamentName: row.tournamentName,
-      divisionName: row.divisionName,
-      finalRank: row.finalRank,
-      capturedAt: row.capturedAt.toISOString(),
-    })),
+    placements,
+    achievements: achievementRows,
     sponsors: sponsorRows,
     teams: teamRows,
   };

@@ -23,3 +23,10 @@ export function attachSessionCookies(response: NextResponse, accessToken: string
   response.cookies.set("efa_access", accessToken, { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", path: "/", maxAge: 900 });
   return response;
 }
+
+/** Ends the browser session. Used by logout and by anything that revokes sessions. */
+export function clearSessionCookies(response: NextResponse) {
+  response.cookies.set("efa_refresh", "", { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", path: "/api/v1/auth", maxAge: 0 });
+  response.cookies.set("efa_access", "", { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", path: "/", maxAge: 0 });
+  return response;
+}

@@ -2,25 +2,40 @@ import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db/client";
 import { gamerCredentials, gamerProfiles, userIdentities, users } from "@/db/schema";
-import { apiData, apiProblem, invalidInput, normalizePhone } from "@/lib/api";
+import { apiData, apiProblem, invalidInput } from "@/lib/api";
 import { createAccessToken } from "@/lib/auth";
 import { attachSessionCookies, createSessionRecord } from "@/lib/gamer-session";
 import { verifyPassword } from "@/lib/password";
 import { checkRateLimit } from "@/lib/rate-limit";
 
+/**
+ * Players sign in with their email address. A mobile number is contact
+ * information on the profile and is not a credential.
+ */
 const requestSchema = z.object({
-  phone: z.string().min(8).max(24),
+  email: z.string().trim().min(3).max(255).optional(),
+  // Older clients sent the address as `identifier`.
+  identifier: z.string().trim().min(3).max(255).optional(),
   password: z.string().min(1).max(128),
+}).refine((value) => Boolean(value.email ?? value.identifier), {
+  message: "Enter your email address.",
+  path: ["email"],
 });
 
-const invalidCredentials = () => apiProblem(401, "INVALID_CREDENTIALS", "Sign in failed", "The phone number or password is incorrect.");
+const invalidCredentials = () => apiProblem(401, "INVALID_CREDENTIALS", "Sign in failed", "The email address or password is incorrect.");
 
 export async function POST(request: Request) {
   try {
     const input = requestSchema.parse(await request.json());
-    let phone: string;
-    try { phone = normalizePhone(input.phone); } catch { return invalidCredentials(); }
-    if (!checkRateLimit(`login:${phone}`, { limit: 10, windowMs: 15 * 60_000 })) {
+    const raw = (input.email ?? input.identifier ?? "").trim();
+    if (!raw.includes("@")) return invalidCredentials();
+
+    const identityType = "email" as const;
+    const identityValue = raw.toLowerCase();
+
+    const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+    if (!checkRateLimit(`login:${identityValue}`, { limit: 10, windowMs: 15 * 60_000 })
+      || !checkRateLimit(`login-ip:${clientIp}`, { limit: 30, windowMs: 15 * 60_000 })) {
       return apiProblem(429, "RATE_LIMITED", "Too many attempts", "Too many sign-in attempts. Try again later.");
     }
 
@@ -28,10 +43,11 @@ export async function POST(request: Request) {
       userId: users.id,
       status: users.status,
       passwordHash: gamerCredentials.passwordHash,
+      mustChangePassword: gamerCredentials.mustChangePassword,
     }).from(userIdentities)
       .innerJoin(users, eq(users.id, userIdentities.userId))
       .innerJoin(gamerCredentials, eq(gamerCredentials.userId, users.id))
-      .where(and(eq(userIdentities.type, "phone"), eq(userIdentities.normalizedValue, phone)))
+      .where(and(eq(userIdentities.type, identityType), eq(userIdentities.normalizedValue, identityValue)))
       .limit(1);
     if (!account || !(await verifyPassword(input.password, account.passwordHash))) return invalidCredentials();
     if (account.status !== "active") {
@@ -44,6 +60,9 @@ export async function POST(request: Request) {
       handle: gamerProfiles.handle,
     }).from(gamerProfiles).where(eq(gamerProfiles.userId, account.userId)).limit(1);
 
+    const identities = await db.select({ type: userIdentities.type, value: userIdentities.normalizedValue })
+      .from(userIdentities).where(eq(userIdentities.userId, account.userId));
+
     const session = await createSessionRecord(db, account.userId, request.headers.get("user-agent"));
     const accessToken = await createAccessToken(account.userId, session.sessionId, "gamer");
     const response = apiData({
@@ -51,7 +70,14 @@ export async function POST(request: Request) {
       tokenType: "Bearer",
       expiresIn: 900,
       refreshToken: session.refreshToken,
-      user: { id: account.userId, phone, accountType: "gamer", profile: profile ?? null },
+      mustChangePassword: account.mustChangePassword,
+      user: {
+        id: account.userId,
+        phone: identities.find((identity) => identity.type === "phone")?.value ?? null,
+        email: identities.find((identity) => identity.type === "email")?.value ?? null,
+        accountType: "gamer",
+        profile: profile ?? null,
+      },
     });
     return attachSessionCookies(response, accessToken, session.refreshToken);
   } catch (error) {

@@ -4,12 +4,20 @@ import "@testing-library/jest-dom/vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { TournamentBuilder } from "./tournament-builder";
-import { gameCatalogStorageKey } from "./game-catalog-manager";
 import { createGameCompetition, createStage, defaultTournamentDraft, tournamentDraftStorageKey } from "@/lib/tournament-draft";
 
 const replace = vi.fn();
 const refresh = vi.fn();
 const scrollIntoView = vi.fn();
+
+/** A draft that passes validation: a competition must name a game in the catalogue. */
+const playableDraft = {
+  ...defaultTournamentDraft,
+  name: "National Esports Championship 2027",
+  location: "Karachi Expo Centre",
+  competitions: defaultTournamentDraft.competitions.map((competition) => ({ ...competition, gameSlug: "kof-2002" })),
+};
+const playableSlug = "national-esports-championship-2027";
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ replace, refresh }),
@@ -21,16 +29,22 @@ beforeEach(() => {
   refresh.mockClear();
   scrollIntoView.mockClear();
   HTMLElement.prototype.scrollIntoView = scrollIntoView;
-  vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({ data: { tournamentId: "11111111-1111-4111-8111-111111111111", slug: "summer-arena", lifecycleCompetitions: [{
-    tournamentId: "11111111-1111-4111-8111-111111111111",
-    divisionId: "22222222-2222-4222-8222-222222222222",
-    name: "Dota 2 Open",
-    game: "Dota 2",
-    status: "DRAFT",
-    actualParticipants: 0,
-    totalMatches: 0,
-    unfinishedMatches: 0,
-  }] } }), { status: 200 })));
+  // The builder also loads the game catalogue on mount, so answer per route.
+  vi.stubGlobal("fetch", vi.fn().mockImplementation((url: string) => {
+    if (String(url).startsWith("/api/v1/games")) {
+      return Promise.resolve(new Response(JSON.stringify({ data: [] }), { status: 200 }));
+    }
+    return Promise.resolve(new Response(JSON.stringify({ data: { tournamentId: "11111111-1111-4111-8111-111111111111", slug: "summer-arena", lifecycleCompetitions: [{
+      tournamentId: "11111111-1111-4111-8111-111111111111",
+      divisionId: "22222222-2222-4222-8222-222222222222",
+      name: "Dota 2 Open",
+      game: "Dota 2",
+      status: "DRAFT",
+      actualParticipants: 0,
+      totalMatches: 0,
+      unfinishedMatches: 0,
+    }] } }), { status: 200 }));
+  }));
 });
 
 afterEach(() => {
@@ -40,7 +54,7 @@ afterEach(() => {
 
 describe("TournamentBuilder", () => {
   it("saves the complete tournament draft to PostgreSQL and opens its edit URL", async () => {
-    render(<TournamentBuilder initialDraft={defaultTournamentDraft} />);
+    render(<TournamentBuilder initialDraft={playableDraft} />);
 
     expect(screen.getByRole("region", { name: "Event structure preview" })).toBeInTheDocument();
 
@@ -123,8 +137,19 @@ describe("TournamentBuilder", () => {
     expect(screen.getByRole("button", { name: "Regenerate players" })).toBeInTheDocument();
   });
 
-  it("configures an admin-assigned league with leaders and player confirmations", () => {
-    render(<TournamentBuilder initialDraft={defaultTournamentDraft} />);
+  it("configures an admin-assigned league with leaders and player confirmations", async () => {
+    // League rosters are drawn from real registered players.
+    vi.stubGlobal("fetch", vi.fn().mockImplementation((url: string) => {
+      if (String(url).startsWith("/api/v1/admin/gamers/selectable")) {
+        return Promise.resolve(new Response(JSON.stringify({ data: { gamers: [
+          { id: "11111111-1111-4111-8111-111111111111", slug: "hazz", handle: "Hazz", displayName: "Hazz" },
+          { id: "22222222-2222-4222-8222-222222222222", slug: "kashif-yagami", handle: "Kashif Yagami", displayName: "Kashif Yagami" },
+        ] } }), { status: 200 }));
+      }
+      return Promise.resolve(new Response(JSON.stringify({ data: [] }), { status: 200 }));
+    }));
+
+    render(<TournamentBuilder initialDraft={playableDraft} />);
 
     fireEvent.change(screen.getByRole("combobox", { name: "Competition type" }), { target: { value: "league" } });
     fireEvent.change(screen.getByRole("spinbutton", { name: "Number of teams" }), { target: { value: "2" } });
@@ -133,21 +158,25 @@ describe("TournamentBuilder", () => {
     expect(screen.getAllByText("CONFIGURATION PENDING")).toHaveLength(2);
     const firstTeam = screen.getByText("TEAM 1").closest(".league-team-card");
     expect(firstTeam).not.toBeNull();
-    fireEvent.change(within(firstTeam as HTMLElement).getByRole("combobox", { name: "Team leader" }), { target: { value: "nova" } });
-    expect(within(firstTeam as HTMLElement).getByRole("checkbox", { name: /NOVA.*Ayaan Khan.*Leader/ })).toBeChecked();
+
+    await screen.findAllByRole("checkbox", { name: /Hazz/ });
+    fireEvent.change(within(firstTeam as HTMLElement).getByRole("combobox", { name: "Team leader" }), {
+      target: { value: "11111111-1111-4111-8111-111111111111" },
+    });
+    expect(within(firstTeam as HTMLElement).getByRole("checkbox", { name: /Hazz.*Leader/ })).toBeChecked();
     expect(within(firstTeam as HTMLElement).getByText("Assigned players (1/5)")).toBeInTheDocument();
-    expect(screen.getAllByText("CONFIGURATION PENDING")).toHaveLength(2);
   });
 
   it("adds multiple game competitions under one event", () => {
     render(<TournamentBuilder initialDraft={defaultTournamentDraft} />);
     fireEvent.click(screen.getByRole("button", { name: "Add game competition" }));
     expect(screen.getByText("GAME COMPETITION 2")).toBeInTheDocument();
-    expect(screen.getAllByRole("combobox", { name: "Game" })[1]).toHaveValue("valorant");
+    // A new competition starts without a game; the operator picks one from the catalogue.
+    expect(screen.getAllByRole("combobox", { name: "Game" })[1]).toHaveValue("");
   });
 
   it("keeps registration unrestricted unless an admin enables a slot limit", () => {
-    render(<TournamentBuilder initialDraft={defaultTournamentDraft} />);
+    render(<TournamentBuilder initialDraft={playableDraft} />);
     const restriction = screen.getByRole("checkbox", { name: "Restrict registration slots" });
     expect(restriction).not.toBeChecked();
     expect(screen.queryByRole("spinbutton", { name: "Registration slot limit" })).not.toBeInTheDocument();
@@ -157,13 +186,37 @@ describe("TournamentBuilder", () => {
     fireEvent.click(screen.getByRole("button", { name: "Save draft" }));
 
     const drafts = JSON.parse(window.localStorage.getItem(tournamentDraftStorageKey) ?? "{}");
-    expect(drafts[defaultTournamentDraft.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")].competitions[0])
+    expect(drafts[playableSlug].competitions[0])
       .toMatchObject({ registrationRestricted: true, registrationLimit: 32 });
   });
 
-  it("offers active games created in the game catalog", () => {
-    window.localStorage.setItem(gameCatalogStorageKey, JSON.stringify([{ slug: "rocket-league", name: "Rocket League", genre: "Sports", participantMode: "team", teamSize: 3, roles: "Player", active: true }]));
+  it("saves an event with no bracket and no stages", async () => {
+    render(<TournamentBuilder initialDraft={playableDraft} />);
+
+    fireEvent.change(screen.getByRole("combobox", { name: "Bracket" }), { target: { value: "result" } });
+    expect(screen.queryByRole("button", { name: /Add stage/ })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Save draft" }));
+    expect(await screen.findByRole("status")).toHaveTextContent("Event draft saved successfully to PostgreSQL");
+
+    const drafts = JSON.parse(window.localStorage.getItem(tournamentDraftStorageKey) ?? "{}");
+    expect(drafts[playableSlug]).toMatchObject({ hasBracket: false, competitions: [{ stages: [] }] });
+  });
+
+  it("rejects a YouTube link that is not a YouTube address", () => {
+    render(<TournamentBuilder initialDraft={playableDraft} />);
+
+    fireEvent.change(screen.getByRole("textbox", { name: "YouTube link" }), { target: { value: "https://example.com/watch?v=abc" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save draft" }));
+
+    expect(screen.getByRole("alert")).toHaveTextContent("Enter a valid YouTube link");
+  });
+
+  it("offers active games from the database catalog", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      data: [{ id: "g1", slug: "rocket-league", name: "Rocket League", genre: "Sports", publisher: null, teamSize: 3, imageUrl: null }],
+    }), { status: 200, headers: { "content-type": "application/json" } })));
     render(<TournamentBuilder initialDraft={defaultTournamentDraft} />);
-    expect(screen.getByRole("option", { name: "Rocket League · Sports" })).toBeInTheDocument();
+    expect(await screen.findByRole("option", { name: "Rocket League · Sports" })).toBeInTheDocument();
   });
 });

@@ -22,7 +22,7 @@ const competitionSchema = z.object({
   leagueTeamCount: z.number().int().min(2),
   playersPerTeam: z.number().int().min(1),
   leagueTeams: z.array(z.object({ id: z.string(), name: z.string(), leaderId: z.string(), playerIds: z.array(z.string()) })),
-  stages: z.array(stageSchema).min(1),
+  stages: z.array(stageSchema),
 });
 const draftSchema = z.object({
   slug: z.string().trim().min(1).max(100),
@@ -33,8 +33,23 @@ const draftSchema = z.object({
   startsAt: z.iso.date(),
   endsAt: z.iso.date(),
   location: z.string().trim().min(1),
+  hasBracket: z.boolean().default(true),
+  youtubeUrl: z.string().trim().max(500).default(""),
   attachments: z.array(z.object({ key: z.string(), url: z.string(), name: z.string(), mimeType: z.string(), sizeBytes: z.number() })),
   competitions: z.array(competitionSchema).min(1),
+}).superRefine((draft, context) => {
+  // A bracket event still needs at least one stage per competition; a recorded
+  // result keeps none, because there are no matches to generate.
+  if (!draft.hasBracket) return;
+  draft.competitions.forEach((competition, index) => {
+    if (competition.stages.length === 0) {
+      context.addIssue({
+        code: "custom",
+        path: ["competitions", index, "stages"],
+        message: `${competition.name} must contain at least one stage.`,
+      });
+    }
+  });
 });
 
 export async function PUT(request: Request) {

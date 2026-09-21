@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { CalendarDays, GitBranch, Globe, MapPin, Radio, Trophy, Users } from "lucide-react";
+import { CalendarDays, GitBranch, Globe, MapPin, PlayCircle, Radio, Trophy, Users } from "lucide-react";
 import { ShareButton } from "@/components/share-button";
+import { isTitle, placementLabel } from "@/lib/placement";
 import { getPublicTournament } from "@/lib/public-tournament-data";
+import { parseYouTubeId } from "@/lib/youtube";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +19,9 @@ export default async function TournamentPage({ params }: { params: Promise<{ slu
   const detail = await getPublicTournament(slug);
   if (!detail) notFound();
   const isLive = detail.status === "live";
+  const hasVideo = parseYouTubeId(detail.youtubeUrl) !== null;
+  // An event without a bracket is a recorded result: show placements, not match progress.
+  const showBracketColumns = detail.hasBracket;
 
   return (
     <div className="page-shell">
@@ -29,21 +34,32 @@ export default async function TournamentPage({ params }: { params: Promise<{ slu
           <span className="filter-chip static">{detail.online ? <><Globe size={14} /> Online</> : <><MapPin size={14} /> {detail.country ?? "Venue event"}</>}</span>
           <span className="filter-chip static"><Users size={14} /> {detail.teams} participants</span>
           <span className="filter-chip static"><Trophy size={14} /> {detail.game}</span>
+          {hasVideo && (
+            <Link className="button button-primary button-small" href={`/tournaments/${detail.slug}/watch`}>
+              <PlayCircle size={15} /> Watch tournament
+            </Link>
+          )}
           <ShareButton title={detail.name} />
         </div>
 
         <section className="competition-status-grid" aria-label="Event summary">
           <div className="stat"><div className="stat-value">{detail.divisions}</div><div className="stat-label">Game competitions</div></div>
           <div className="stat"><div className="stat-value">{detail.teams}</div><div className="stat-label">Participants</div></div>
-          <div className="stat"><div className="stat-value">{detail.progress}%</div><div className="stat-label">Matches complete</div></div>
+          {showBracketColumns
+            ? <div className="stat"><div className="stat-value">{detail.progress}%</div><div className="stat-label">Matches complete</div></div>
+            : <div className="stat"><div className="stat-value">{detail.status === "completed" ? "FINAL" : "—"}</div><div className="stat-label">Results</div></div>}
         </section>
 
         <section className="card panel" aria-label="Competitions in this event">
           <div className="section-header">
             <div>
               <div className="eyebrow">Game competitions</div>
-              <h2 className="panel-title">Brackets & results</h2>
-              <p className="helper">Each game competition keeps its own bracket, matches and standings.</p>
+              <h2 className="panel-title">{showBracketColumns ? "Brackets & results" : "Final results"}</h2>
+              <p className="helper">
+                {showBracketColumns
+                  ? "Each game competition keeps its own bracket, matches and standings."
+                  : "This event is recorded as a final result, without a bracket."}
+              </p>
             </div>
           </div>
 
@@ -53,7 +69,7 @@ export default async function TournamentPage({ params }: { params: Promise<{ slu
               <h3>Competitions are being finalised</h3>
               <p className="muted">Game competitions appear here once the organizer publishes them.</p>
             </div>
-          ) : (
+          ) : showBracketColumns ? (
             <div className="table-scroll">
               <table className="data-table">
                 <thead>
@@ -88,6 +104,26 @@ export default async function TournamentPage({ params }: { params: Promise<{ slu
                 </tbody>
               </table>
             </div>
+          ) : (
+            detail.divisionList.map((division) => (
+              <div key={division.id} style={{ marginTop: 18 }}>
+                <h3 className="panel-title">{division.game}{detail.divisionList.length > 1 && ` · ${division.name}`}</h3>
+                {division.placements.length === 0 ? (
+                  <p className="muted">No results recorded yet.</p>
+                ) : division.placements.map((entry) => (
+                  <div className="achievement" key={`${division.id}-${entry.displayName}`}>
+                    <div>
+                      {entry.gamerSlug
+                        ? <Link href={`/gamers/${entry.gamerSlug}`}><strong>{entry.displayName}</strong></Link>
+                        : <strong>{entry.displayName}</strong>}
+                    </div>
+                    <strong className={isTitle(entry.finalRank) ? "green" : undefined}>
+                      {placementLabel(entry.finalRank, entry.placementLabel)}
+                    </strong>
+                  </div>
+                ))}
+              </div>
+            ))
           )}
         </section>
       </div>

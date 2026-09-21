@@ -15,6 +15,9 @@
     "db:migrate": "tsx src/db/migrate.ts",
     "db:push": "drizzle-kit push",
     "db:seed": "tsx src/db/seed.ts",
+    "db:seed:content": "tsx src/db/seed-content.ts",
+    "db:cleanup-demo": "tsx src/db/cleanup-demo.ts",
+    "db:reset": "tsx src/db/reset.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

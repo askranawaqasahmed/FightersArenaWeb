@@ -81,6 +81,7 @@ export const adminCredentials = pgTable("admin_credentials", {
 export const gamerCredentials = pgTable("gamer_credentials", {
   userId: uuid("user_id").primaryKey().references(() => users.id, { onDelete: "cascade" }),
   passwordHash: varchar("password_hash", { length: 255 }).notNull(),
+  mustChangePassword: boolean("must_change_password").default(false).notNull(),
   ...timestamps,
 });
 
@@ -133,6 +134,7 @@ export const games = pgTable("games", {
   publisher: varchar("publisher", { length: 120 }),
   teamSize: integer("team_size").default(1).notNull(),
   coverGradient: varchar("cover_gradient", { length: 120 }).notNull(),
+  imageUrl: text("image_url"),
   active: boolean("active").default(true).notNull(),
   ...timestamps,
 });
@@ -161,6 +163,19 @@ export const gamerGames = pgTable("gamer_games", {
   platform: varchar("platform", { length: 64 }),
   verified: boolean("verified").default(false).notNull(),
 }, (table) => [primaryKey({ columns: [table.gamerId, table.gameId] })]);
+
+export const gamerAchievements = pgTable("gamer_achievements", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  gamerId: uuid("gamer_id").references(() => gamerProfiles.id, { onDelete: "cascade" }).notNull(),
+  category: varchar("category", { length: 32 }).default("highlight").notNull(),
+  title: varchar("title", { length: 200 }).notNull(),
+  detail: text("detail"),
+  gameId: uuid("game_id").references(() => games.id, { onDelete: "set null" }),
+  yearLabel: varchar("year_label", { length: 40 }),
+  sequence: integer("sequence").default(0).notNull(),
+  verified: boolean("verified").default(false).notNull(),
+  ...timestamps,
+}, (table) => [index("gamer_achievement_order_idx").on(table.gamerId, table.category, table.sequence)]);
 
 export const teams = pgTable("teams", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -223,6 +238,9 @@ export const tournaments = pgTable("tournaments", {
   online: boolean("online").default(true).notNull(),
   featured: boolean("featured").default(false).notNull(),
   bannerUrl: text("banner_url"),
+  hasBracket: boolean("has_bracket").default(true).notNull(),
+  youtubeUrl: text("youtube_url"),
+  datePrecision: varchar("date_precision", { length: 8 }).default("day").notNull(),
   ...timestamps,
 });
 
@@ -267,6 +285,7 @@ export const tournamentParticipantSnapshots = pgTable("tournament_participant_sn
   participantType: participantType("participant_type").notNull(),
   displayName: varchar("display_name", { length: 140 }).notNull(),
   finalRank: integer("final_rank"),
+  placementLabel: varchar("placement_label", { length: 40 }),
   profileSnapshot: jsonb("profile_snapshot").$type<Record<string, unknown>>().default({}).notNull(),
   rosterSnapshot: jsonb("roster_snapshot").$type<Array<Record<string, unknown>>>().default([]).notNull(),
   sponsorSnapshot: jsonb("sponsor_snapshot").$type<Array<Record<string, unknown>>>().default([]).notNull(),

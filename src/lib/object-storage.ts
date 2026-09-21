@@ -3,7 +3,14 @@ import "server-only";
 import { GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { env } from "@/lib/env";
 
-export type MediaPurpose = "slider" | "event-image" | "event-gallery" | "profile-picture" | "attachment";
+export type MediaPurpose =
+  | "slider"
+  | "event-image"
+  | "event-gallery"
+  | "profile-picture"
+  | "game-image"
+  | "sponsor-logo"
+  | "attachment";
 
 export class ObjectStorageConfigurationError extends Error {
   constructor() {

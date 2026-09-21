@@ -1,35 +1,23 @@
 "use client";
 
 import { Trash2 } from "lucide-react";
-import { useMemo, useSyncExternalStore } from "react";
-import { defaultManagedGames, gameCatalogChangeEvent, gameCatalogStorageKey, type ManagedGame } from "./game-catalog-manager";
 import { LeagueTeamAssignments } from "./league-team-assignments";
 import { TournamentStagePipeline } from "./tournament-stage-pipeline";
+import { useGameCatalog } from "./use-game-catalog";
 import { createLeagueTeam, type GameCompetitionDraft } from "@/lib/tournament-draft";
 
 type GameCompetitionEditorProps = {
   competition: GameCompetitionDraft;
   index: number;
   canRemove: boolean;
+  /** false hides the stage pipeline: the event records final placements only. */
+  hasBracket?: boolean;
   onChange: (competition: GameCompetitionDraft) => void;
   onRemove: () => void;
 };
 
-function subscribeToGames(onStoreChange: () => void) {
-  window.addEventListener("storage", onStoreChange);
-  window.addEventListener(gameCatalogChangeEvent, onStoreChange);
-  return () => { window.removeEventListener("storage", onStoreChange); window.removeEventListener(gameCatalogChangeEvent, onStoreChange); };
-}
-
-function getGamesSnapshot() {
-  return window.localStorage.getItem(gameCatalogStorageKey) ?? "";
-}
-
-export function GameCompetitionEditor({ competition, index, canRemove, onChange, onRemove }: GameCompetitionEditorProps) {
-  const storedGames = useSyncExternalStore(subscribeToGames, getGamesSnapshot, () => "");
-  const availableGames = useMemo(() => {
-    try { return (storedGames ? JSON.parse(storedGames) as ManagedGame[] : defaultManagedGames).filter((game) => game.active || game.slug === competition.gameSlug); } catch { return defaultManagedGames; }
-  }, [competition.gameSlug, storedGames]);
+export function GameCompetitionEditor({ competition, index, canRemove, hasBracket = true, onChange, onRemove }: GameCompetitionEditorProps) {
+  const { games: availableGames } = useGameCatalog();
   function updateCompetition(changes: Partial<GameCompetitionDraft>) {
     onChange({ ...competition, ...changes });
   }
@@ -60,7 +48,7 @@ export function GameCompetitionEditor({ competition, index, canRemove, onChange,
 
       <div className="builder-grid">
         <label className="form-group"><span className="form-label">Competition name</span><input className="input" value={competition.name} onChange={(event) => updateCompetition({ name: event.target.value })} /></label>
-        <label className="form-group"><span className="form-label">Game</span><select className="select" value={competition.gameSlug} onChange={(event) => updateCompetition({ gameSlug: event.target.value as GameCompetitionDraft["gameSlug"] })}>{!availableGames.some((game) => game.slug === competition.gameSlug) && <option value={competition.gameSlug}>{competition.gameSlug}</option>}{availableGames.map((game) => <option value={game.slug} key={game.slug}>{game.name} · {game.genre}</option>)}</select></label>
+        <label className="form-group"><span className="form-label">Game</span><select className="select" value={competition.gameSlug} onChange={(event) => updateCompetition({ gameSlug: event.target.value as GameCompetitionDraft["gameSlug"] })}>{!availableGames.some((game) => game.slug === competition.gameSlug) && <option value={competition.gameSlug}>{competition.gameSlug || "Select a game"}</option>}{availableGames.map((game) => <option value={game.slug} key={game.slug}>{game.name} · {game.genre}</option>)}</select></label>
         <label className="form-group"><span className="form-label">Competition type</span><select className="select" value={competition.competitionType} onChange={(event) => updateCompetition({ competitionType: event.target.value as GameCompetitionDraft["competitionType"] })}><option value="tournament">Tournament · Individual registration</option><option value="league">League · Admin-assigned teams</option></select></label>
         {competition.competitionType === "tournament"
           ? <label className="form-group"><span className="form-label">Planned participants</span><input className="input" type="number" min="2" value={competition.maxEntries} onChange={(event) => updateCompetition({ maxEntries: Number(event.target.value) })} /><span className="helper">Used for planning only. The bracket is generated from checked-in participants when the event starts.</span></label>
@@ -82,12 +70,16 @@ export function GameCompetitionEditor({ competition, index, canRemove, onChange,
         </section>
       ) : <LeagueTeamAssignments teams={competition.leagueTeams} playersPerTeam={competition.playersPerTeam} onChange={(leagueTeams) => updateCompetition({ leagueTeams })} />}
 
-      <TournamentStagePipeline
-        value={competition.stages}
-        participantCount={competition.competitionType === "league" ? competition.leagueTeamCount : competition.maxEntries}
-        participantLabel={competition.competitionType === "league" ? "teams" : "participants"}
-        onChange={(stages) => updateCompetition({ stages })}
-      />
+      {hasBracket ? (
+        <TournamentStagePipeline
+          value={competition.stages}
+          participantCount={competition.competitionType === "league" ? competition.leagueTeamCount : competition.maxEntries}
+          participantLabel={competition.competitionType === "league" ? "teams" : "participants"}
+          onChange={(stages) => updateCompetition({ stages })}
+        />
+      ) : (
+        <p className="helper">This event records final results only. Enter the placements on the event page once it is saved.</p>
+      )}
     </article>
   );
 }

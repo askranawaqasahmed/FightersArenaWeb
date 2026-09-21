@@ -1,9 +1,12 @@
 import "dotenv/config";
 import { z } from "zod";
 
+const DEFAULT_DATABASE_URL = "postgresql://postgres:postgres@localhost:5432/fightersarena";
+const DEFAULT_JWT_SECRET = "local-development-secret-change-before-production";
+
 const envSchema = z.object({
-  DATABASE_URL: z.string().url().default("postgresql://postgres:123@localhost:5432/comp"),
-  JWT_PRIVATE_SECRET: z.string().min(32).default("local-development-secret-change-before-production"),
+  DATABASE_URL: z.string().url().default(DEFAULT_DATABASE_URL),
+  JWT_PRIVATE_SECRET: z.string().min(32).default(DEFAULT_JWT_SECRET),
   NEXT_PUBLIC_APP_URL: z.string().url().default("http://localhost:3000"),
   DEV_OTP_CODE: z.string().regex(/^\d{6}$/).default("123456"),
   AWS_ENDPOINT_URL: z.string().url().optional(),
@@ -13,6 +16,24 @@ const envSchema = z.object({
   AWS_DEFAULT_REGION: z.string().min(1).default("us-east-1"),
   AWS_S3_FORCE_PATH_STYLE: z.enum(["true", "false"]).default("true"),
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
+}).superRefine((value, context) => {
+  // The development defaults must never reach a live deployment: the JWT secret
+  // would let anyone mint a session, and the database URL points at a local box.
+  if (value.NODE_ENV !== "production") return;
+  if (value.JWT_PRIVATE_SECRET === DEFAULT_JWT_SECRET) {
+    context.addIssue({
+      code: "custom",
+      path: ["JWT_PRIVATE_SECRET"],
+      message: "Set JWT_PRIVATE_SECRET to at least 32 random characters before deploying.",
+    });
+  }
+  if (value.DATABASE_URL === DEFAULT_DATABASE_URL) {
+    context.addIssue({
+      code: "custom",
+      path: ["DATABASE_URL"],
+      message: "Set DATABASE_URL to the production database before deploying.",
+    });
+  }
 });
 
 export const env = envSchema.parse({

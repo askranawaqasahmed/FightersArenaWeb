@@ -17,8 +17,8 @@ import {
 
 export const runtime = "nodejs";
 
-const purposeSchema = z.enum(["slider", "event-image", "event-gallery", "profile-picture", "attachment"]);
-const imagePurposes = new Set<MediaPurpose>(["slider", "event-image", "event-gallery", "profile-picture"]);
+const purposeSchema = z.enum(["slider", "event-image", "event-gallery", "profile-picture", "game-image", "sponsor-logo", "attachment"]);
+const imagePurposes = new Set<MediaPurpose>(["slider", "event-image", "event-gallery", "profile-picture", "game-image", "sponsor-logo"]);
 
 export async function POST(request: Request) {
   const admin = await getRequestAdmin(request);
@@ -67,6 +67,14 @@ export async function POST(request: Request) {
       await db.update(gamerProfiles)
         .set({ avatarUrl: url, updatedAt: new Date() })
         .where(eq(gamerProfiles.userId, gamer.userId));
+    }
+
+    // An operator uploading for a named player sets that player's avatar.
+    const gamerSlug = String(formData.get("gamerSlug") ?? "").trim();
+    if (admin && purpose === "profile-picture" && gamerSlug) {
+      await db.update(gamerProfiles)
+        .set({ avatarUrl: url, updatedAt: new Date() })
+        .where(eq(gamerProfiles.slug, gamerSlug));
     }
 
     return apiData({ key, url, originalName: file.name, mimeType: file.type, sizeBytes: file.size }, { status: 201 });

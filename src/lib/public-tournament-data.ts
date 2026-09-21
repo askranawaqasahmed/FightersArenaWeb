@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, inArray } from "drizzle-orm";
+import { and, asc, count, eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import {
   countries,
@@ -11,6 +11,7 @@ import {
   stageParticipants,
   stages,
   standings,
+  tournamentParticipantSnapshots,
   tournaments,
 } from "@/db/schema";
 import { compareBracketMatchOrder } from "@/lib/bracket-match-order";
@@ -58,7 +59,15 @@ export function publicFormatLabel(format: string | null) {
   return format ? formatLabels[format] ?? format : "Format to be announced";
 }
 
-export function formatDateRange(startsAt: Date | null, endsAt: Date | null) {
+/**
+ * `precision` records how much of the date is actually known:
+ *   "day"     a real scheduled date
+ *   "year"    only the year is known (historical import)
+ *   "unknown" the date was never recorded
+ */
+export function formatDateRange(startsAt: Date | null, endsAt: Date | null, precision: string = "day") {
+  if (precision === "unknown") return "Date not recorded";
+  if (startsAt && precision === "year") return String(startsAt.getFullYear());
   if (!startsAt) return "Dates to be announced";
   const start = startsAt.toLocaleDateString("en-PK", { day: "2-digit", month: "short", year: "numeric" });
   if (!endsAt) return start;
@@ -88,6 +97,9 @@ export type PublicTournamentSummary = {
   online: boolean;
   featured: boolean;
   bannerUrl: string | null;
+  hasBracket: boolean;
+  youtubeUrl: string | null;
+  datePrecision: string;
   teams: number;
   divisions: number;
   progress: number;
@@ -106,6 +118,7 @@ export type PublicDivisionSummary = {
   stageName: string | null;
   bestOf: number | null;
   participants: number;
+  placements: Array<{ displayName: string; finalRank: number | null; placementLabel: string | null; gamerSlug: string | null }>;
   totalMatches: number;
   finishedMatches: number;
   liveMatches: number;
@@ -228,6 +241,9 @@ export async function getPublicTournaments(executor: DbExecutor = db): Promise<P
       online: tournaments.online,
       featured: tournaments.featured,
       bannerUrl: tournaments.bannerUrl,
+      hasBracket: tournaments.hasBracket,
+      youtubeUrl: tournaments.youtubeUrl,
+      datePrecision: tournaments.datePrecision,
       country: countries.name,
       divisionId: divisions.id,
       gameName: games.name,
@@ -239,7 +255,7 @@ export async function getPublicTournaments(executor: DbExecutor = db): Promise<P
     .leftJoin(games, eq(games.id, divisions.gameId))
     .leftJoin(stages, and(eq(stages.divisionId, divisions.id), eq(stages.sequence, 1)))
     .where(inArray(tournaments.status, [...publicTournamentStatuses]))
-    .orderBy(desc(tournaments.startsAt));
+    .orderBy(sql`${tournaments.startsAt} desc nulls last`);
 
   const byTournament = new Map<string, { row: typeof rows[number]; games: Set<string>; formats: Set<string>; divisions: Set<string> }>();
   for (const row of rows) {
@@ -251,6 +267,17 @@ export async function getPublicTournaments(executor: DbExecutor = db): Promise<P
   }
 
   const counts = await tournamentCounts([...byTournament.keys()], executor);
+
+  // Events recorded without a bracket have no registrations; count their snapshots instead.
+  const snapshotCounts = byTournament.size > 0
+    ? await executor
+      .select({ tournamentId: tournamentParticipantSnapshots.tournamentId, value: count() })
+      .from(tournamentParticipantSnapshots)
+      .where(inArray(tournamentParticipantSnapshots.tournamentId, [...byTournament.keys()]))
+      .groupBy(tournamentParticipantSnapshots.tournamentId)
+    : [];
+  const snapshotByTournament = new Map(snapshotCounts.map((row) => [row.tournamentId, Number(row.value)]));
+
   return [...byTournament.entries()].map(([id, entry]) => {
     const gameNames = [...entry.games];
     const formats = [...entry.formats];
@@ -265,17 +292,25 @@ export async function getPublicTournaments(executor: DbExecutor = db): Promise<P
       statusLabel: publicStatusLabel(entry.row.status),
       game: gameNames.length ? gameNames.join(", ") : "Game to be announced",
       games: gameNames,
-      format: formats.length === 1 ? publicFormatLabel(formats[0]) : formats.length > 1 ? "Multi-format event" : publicFormatLabel(null),
-      date: formatDateRange(entry.row.startsAt, entry.row.endsAt),
+      format: formats.length === 1
+        ? publicFormatLabel(formats[0])
+        : formats.length > 1
+          ? "Multi-format event"
+          : entry.row.hasBracket ? publicFormatLabel(null) : "Final result",
+      date: formatDateRange(entry.row.startsAt, entry.row.endsAt, entry.row.datePrecision),
       startsAt: entry.row.startsAt?.toISOString() ?? null,
       endsAt: entry.row.endsAt?.toISOString() ?? null,
       country: entry.row.country,
       online: entry.row.online,
       featured: entry.row.featured,
       bannerUrl: entry.row.bannerUrl,
-      teams: counts.participants.get(id) ?? 0,
+      hasBracket: entry.row.hasBracket,
+      youtubeUrl: entry.row.youtubeUrl,
+      datePrecision: entry.row.datePrecision,
+      teams: counts.participants.get(id) || snapshotByTournament.get(id) || 0,
       divisions: entry.divisions.size,
-      progress: progressPercent(finished, total),
+      // A completed event with no matches is an imported result, not an unstarted one.
+      progress: total === 0 && entry.row.status === "completed" ? 100 : progressPercent(finished, total),
     };
   });
 }
@@ -324,11 +359,31 @@ async function getDivisionSummaries(tournamentId: string, executor: DbExecutor):
     .groupBy(registrations.divisionId);
   const participantsByDivision = new Map(participantRows.map((row) => [row.divisionId, Number(row.value)]));
 
+  // Imported historical results have no registrations; their participants live in the snapshots.
+  const snapshotRows = await executor
+    .select({
+      divisionId: tournamentParticipantSnapshots.divisionId,
+      participantId: tournamentParticipantSnapshots.participantId,
+      displayName: tournamentParticipantSnapshots.displayName,
+      finalRank: tournamentParticipantSnapshots.finalRank,
+      placementLabel: tournamentParticipantSnapshots.placementLabel,
+    })
+    .from(tournamentParticipantSnapshots)
+    .where(inArray(tournamentParticipantSnapshots.divisionId, publicDivisions.map((row) => row.id)));
+
+  const gamerLinks = await resolveParticipantLinks(
+    snapshotRows.map((row) => ({ id: row.participantId, type: "gamer" as const })),
+    executor,
+  );
+
   return publicDivisions.map((row) => {
     const stageMatches = row.stageId ? matchRows.filter((match) => match.stageId === row.stageId) : [];
     const finished = stageMatches.filter((match) => finishedMatchStatuses.includes(match.status as typeof finishedMatchStatuses[number])).length;
     const live = stageMatches.filter((match) => match.status === "live").length;
     const configuration = (row.configuration ?? {}) as { bestOf?: number };
+    const divisionSnapshots = snapshotRows
+      .filter((snapshot) => snapshot.divisionId === row.id)
+      .sort((left, right) => (left.finalRank ?? 999) - (right.finalRank ?? 999));
     return {
       id: row.id,
       name: row.name,
@@ -338,15 +393,21 @@ async function getDivisionSummaries(tournamentId: string, executor: DbExecutor):
       competitionType: row.competitionType,
       participantType: row.participantType,
       format: row.format ?? "custom",
-      formatLabel: publicFormatLabel(row.format),
+      formatLabel: row.format ? publicFormatLabel(row.format) : "Archived result",
       stageName: row.stageName,
       bestOf: configuration.bestOf ?? null,
-      participants: participantsByDivision.get(row.id) ?? 0,
+      participants: participantsByDivision.get(row.id) ?? divisionSnapshots.length,
       totalMatches: stageMatches.length,
       finishedMatches: finished,
       liveMatches: live,
       // The bracket only exists once the operator starts the competition.
       bracketAvailable: stageMatches.length > 0,
+      placements: divisionSnapshots.map((snapshot) => ({
+        displayName: snapshot.displayName,
+        finalRank: snapshot.finalRank,
+        placementLabel: snapshot.placementLabel,
+        gamerSlug: gamerLinks.get(snapshot.participantId)?.slug ?? null,
+      })),
     };
   });
 }
@@ -388,6 +449,9 @@ export async function getPublicTournament(slug: string, executor: DbExecutor = d
       online: tournaments.online,
       featured: tournaments.featured,
       bannerUrl: tournaments.bannerUrl,
+      hasBracket: tournaments.hasBracket,
+      youtubeUrl: tournaments.youtubeUrl,
+      datePrecision: tournaments.datePrecision,
       country: countries.name,
     })
     .from(tournaments)
@@ -417,16 +481,20 @@ export async function getPublicTournament(slug: string, executor: DbExecutor = d
     game: gameNames.length ? gameNames.join(", ") : "Game to be announced",
     games: gameNames,
     format: formats.length === 1 ? publicFormatLabel(formats[0]) : formats.length > 1 ? "Multi-format event" : publicFormatLabel(null),
-    date: formatDateRange(event.startsAt, event.endsAt),
+    date: formatDateRange(event.startsAt, event.endsAt, event.datePrecision),
     startsAt: event.startsAt?.toISOString() ?? null,
     endsAt: event.endsAt?.toISOString() ?? null,
     country: event.country,
+    hasBracket: event.hasBracket,
+    youtubeUrl: event.youtubeUrl,
+    datePrecision: event.datePrecision,
     online: event.online,
     featured: event.featured,
     bannerUrl: event.bannerUrl,
-    teams: counts.participants.get(event.id) ?? 0,
+    teams: counts.participants.get(event.id) ?? divisionList.reduce((sum, division) => sum + division.participants, 0),
     divisions: divisionList.length,
-    progress: progressPercent(finished, total),
+    // A completed event with no matches is an imported result, not an unstarted one.
+    progress: total === 0 && event.status === "completed" ? 100 : progressPercent(finished, total),
     divisionList,
   };
 }

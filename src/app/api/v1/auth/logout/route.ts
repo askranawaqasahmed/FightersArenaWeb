@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/db/client";
 import { sessions } from "@/db/schema";
 import { hashSecret } from "@/lib/auth";
+import { clearSessionCookies } from "@/lib/gamer-session";
 
 export async function POST(request: Request) {
   let refreshToken: string | undefined;
@@ -17,8 +18,5 @@ export async function POST(request: Request) {
   }
   if (refreshToken) await db.update(sessions).set({ revokedAt: new Date() }).where(eq(sessions.tokenHash, hashSecret(refreshToken)));
 
-  const response = new NextResponse(null, { status: 204 });
-  response.cookies.set("efa_refresh", "", { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/api/v1/auth", maxAge: 0 });
-  response.cookies.set("efa_access", "", { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/", maxAge: 0 });
-  return response;
+  return clearSessionCookies(new NextResponse(null, { status: 204 }));
 }

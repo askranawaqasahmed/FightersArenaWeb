@@ -11,6 +11,9 @@ const requestSchema = z.object({ phone: z.string().min(8).max(24) });
 
 export async function POST(request: Request) {
   try {
+    if (env.NODE_ENV === "production") {
+      return apiProblem(404, "NOT_FOUND", "Not found", "This endpoint is not available.");
+    }
     const input = requestSchema.parse(await request.json());
     let phone: string;
     try { phone = normalizePhone(input.phone); } catch { return apiProblem(422, "INVALID_PHONE", "Invalid phone number", "Use a valid international mobile number."); }

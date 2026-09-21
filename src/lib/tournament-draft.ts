@@ -49,6 +49,9 @@ export type TournamentDraft = {
   startsAt: string;
   endsAt: string;
   location: string;
+  /** false records the event as a final result only: no stages, rounds or matches. */
+  hasBracket: boolean;
+  youtubeUrl: string;
   attachments: EventAttachmentDraft[];
   competitions: GameCompetitionDraft[];
 };
@@ -99,8 +102,9 @@ export function createGameCompetition(
   const leagueTeamCount = Math.max(2, Number(options.leagueTeamCount ?? 4));
   return {
     id,
-    name: options.name ?? "Dota 2 Open",
-    gameSlug: options.gameSlug ?? "dota-2",
+    name: options.name ?? "Open competition",
+    // Empty by default: the operator picks a game from the real catalogue.
+    gameSlug: options.gameSlug ?? "",
     competitionType: options.competitionType ?? "tournament",
     maxEntries: options.maxEntries ?? 32,
     registrationRestricted: options.registrationRestricted ?? false,
@@ -112,14 +116,20 @@ export function createGameCompetition(
   };
 }
 
+function isoDate(offsetDays: number) {
+  return new Date(Date.now() + offsetDays * 86_400_000).toISOString().slice(0, 10);
+}
+
 export const defaultTournamentDraft: TournamentDraft = {
-  name: "National Esports Championship 2027",
-  description: "Pakistan's national multi-game championship event.",
+  name: "New event",
+  description: "",
   imageUrl: "",
   imageAlt: "",
-  startsAt: "2027-08-18",
-  endsAt: "2027-08-24",
-  location: "Karachi Expo Centre",
+  startsAt: isoDate(14),
+  endsAt: isoDate(16),
+  location: "",
+  hasBracket: true,
+  youtubeUrl: "",
   attachments: [],
   competitions: [createGameCompetition("competition-1")],
 };
@@ -139,6 +149,7 @@ type LegacyDraft = {
 export function normalizeGameCompetition(
   competition: Partial<GameCompetitionDraft>,
   index: number,
+  hasBracket = true,
 ): GameCompetitionDraft {
   const id = competition.id ?? `competition-${index + 1}`;
   const leagueTeamCount = Math.max(2, Number(competition.leagueTeamCount ?? 4));
@@ -147,13 +158,17 @@ export function normalizeGameCompetition(
     ...competition,
     leagueTeamCount,
     leagueTeams: Array.from({ length: leagueTeamCount }, (_, teamIndex) => savedTeams[teamIndex] ?? createLeagueTeam(teamIndex, id)),
-    stages: competition.stages?.length ? competition.stages : [createStage(`${id}-stage-1`)],
+    // An event without a bracket keeps no stages at all.
+    stages: hasBracket
+      ? (competition.stages?.length ? competition.stages : [createStage(`${id}-stage-1`)])
+      : [],
   });
 }
 
 export function normalizeTournamentDraft(draft: Partial<TournamentDraft> & LegacyDraft): TournamentDraft {
+  const hasBracket = draft.hasBracket ?? true;
   const competitions = draft.competitions?.length
-    ? draft.competitions.map(normalizeGameCompetition)
+    ? draft.competitions.map((competition, index) => normalizeGameCompetition(competition, index, hasBracket))
     : [normalizeGameCompetition({
         name: draft.name ? `${draft.name} competition` : "Game competition",
         gameSlug: draft.gameSlug,
@@ -165,7 +180,7 @@ export function normalizeTournamentDraft(draft: Partial<TournamentDraft> & Legac
         playersPerTeam: draft.playersPerTeam,
         leagueTeams: draft.leagueTeams,
         stages: draft.stages,
-      }, 0)];
+      }, 0, hasBracket)];
 
   return {
     slug: draft.slug,
@@ -176,6 +191,8 @@ export function normalizeTournamentDraft(draft: Partial<TournamentDraft> & Legac
     startsAt: draft.startsAt ?? defaultTournamentDraft.startsAt,
     endsAt: draft.endsAt ?? defaultTournamentDraft.endsAt,
     location: draft.location ?? defaultTournamentDraft.location,
+    hasBracket,
+    youtubeUrl: draft.youtubeUrl ?? "",
     attachments: Array.isArray(draft.attachments) ? draft.attachments : [],
     competitions,
   };

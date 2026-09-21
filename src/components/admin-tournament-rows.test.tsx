@@ -4,7 +4,7 @@ import "@testing-library/jest-dom/vitest";
 import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { AdminTournamentRows } from "./admin-tournament-rows";
-import { adminEvents } from "@/lib/admin-events";
+import { adminEvents } from "@/lib/admin-events.fixture";
 import { createGameCompetition, createStage, tournamentDraftStorageKey } from "@/lib/tournament-draft";
 
 beforeEach(() => window.localStorage.clear());

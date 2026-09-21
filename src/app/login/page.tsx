@@ -3,54 +3,43 @@
 import { FormEvent, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowRight, LockKeyhole } from "lucide-react";
+import { LockKeyhole } from "lucide-react";
 import { Brand } from "@/components/brand";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [phone, setPhone] = useState("+923001234567");
-  const [code, setCode] = useState("");
-  const [challengeId, setChallengeId] = useState("");
-  const [message, setMessage] = useState("Request a six-digit verification code to continue.");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [message, setMessage] = useState("Sign in with the email address on your player account.");
   const [error, setError] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  async function requestCode(event: FormEvent<HTMLFormElement>) {
+  async function signIn(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setLoading(true);
     setError(false);
-    const response = await fetch("/api/v1/auth/otp/request", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ phone }) });
-    const body = await response.json();
-    setLoading(false);
-    if (response.ok) {
-      setChallengeId(body.data.challengeId);
-      if (body.data.debugCode) {
-        setCode(body.data.debugCode);
-        setMessage(`Development code ${body.data.debugCode} is ready to verify.`);
-      } else {
-        setMessage("Code requested. Enter the six-digit verification code.");
+    try {
+      const response = await fetch("/api/v1/auth/login", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+      const body = await response.json();
+      if (response.ok) {
+        setMessage("Signed in. Opening your player dashboard…");
+        router.replace(body.data?.mustChangePassword ? "/dashboard/settings?first=1" : "/dashboard");
+        router.refresh();
+        return;
       }
-    } else {
       setError(true);
-      setMessage(body.detail ?? "Unable to request a code.");
+      setMessage(body.detail ?? "Sign in failed.");
+    } catch {
+      setError(true);
+      setMessage("Unable to reach the server. Check your connection and try again.");
+    } finally {
+      setLoading(false);
     }
   }
 
-  async function verifyCode() {
-    setLoading(true);
-    setError(false);
-    const response = await fetch("/api/v1/auth/otp/verify", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ phone, code, challengeId }) });
-    const body = await response.json();
-    setLoading(false);
-    if (response.ok) {
-      setMessage("Authenticated. Opening your player dashboard…");
-      router.replace("/dashboard");
-      router.refresh();
-    } else {
-      setError(true);
-      setMessage(body.detail ?? "Verification failed.");
-    }
-  }
-
-  return <main className="auth-page"><section className="card auth-card"><Brand /><h1>Enter the arena.</h1><p className="muted">Sign in to view your player profile and competition history.</p><form className="auth-form" onSubmit={requestCode}><label className="form-group"><span className="form-label">Mobile number</span><input className="input" type="tel" autoComplete="tel" value={phone} onChange={(event) => setPhone(event.target.value)} required /></label>{challengeId && <label className="form-group"><span className="form-label">Verification code</span><input className="input" inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={code} onChange={(event) => setCode(event.target.value)} required /></label>}{challengeId ? <button className="button button-primary" type="button" onClick={verifyCode} disabled={loading}><LockKeyhole size={16} /> {loading ? "Verifying…" : "View my dashboard"}</button> : <button className="button button-primary" disabled={loading}>{loading ? "Requesting…" : "Request code"}<ArrowRight size={16} /></button>}<p className={`helper${error ? " form-error" : ""}`} role="status">{message}</p></form><Link className="text-link" href="/">Return to public site</Link></section></main>;
+  return <main className="auth-page"><section className="card auth-card"><Brand /><h1>Enter the arena.</h1><p className="muted">Sign in to manage your player profile and competition history.</p><form className="auth-form" onSubmit={signIn}><label className="form-group"><span className="form-label">Email address</span><input className="input" type="email" autoComplete="username" value={email} onChange={(event) => setEmail(event.target.value)} required /></label><label className="form-group"><span className="form-label">Password</span><input className="input" type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} required /></label><button className="button button-primary" disabled={loading}><LockKeyhole size={16} /> {loading ? "Signing in…" : "Sign in"}</button><p className={`helper${error ? " form-error" : ""}`} role="status">{message}</p></form><Link className="text-link" href="/">Return to public site</Link></section></main>;
 }
