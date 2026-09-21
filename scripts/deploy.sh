@@ -61,6 +61,16 @@ cp -r .next/static .next/standalone/.next/static
 if [ -d public ]; then cp -r public .next/standalone/public; fi
 cp .env.production .next/standalone/.env.production
 
+# `dotenv/config` reads .env, not .env.production, so the CLI scripts would
+# otherwise fall back to their development defaults. Export the real values
+# for the database steps below.
+step "Loading production environment"
+set -a
+# shellcheck disable=SC1091
+. "$APP_DIR/.env.production"
+set +a
+echo "database role: $(echo "$DATABASE_URL" | sed -E 's|postgresql://([^:]+).*|\1|')"
+
 step "Running migrations"
 npm run db:migrate
 
