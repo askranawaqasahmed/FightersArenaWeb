@@ -414,6 +414,9 @@ img { max-width: 100%; }
 .account-shell { min-height: 100vh; background: var(--background); }
 .account-header { position: sticky; top: 0; z-index: 40; border-bottom: 1px solid var(--border); background: rgba(255,255,255,.92); backdrop-filter: blur(16px); }
 .account-header-inner { min-height: 72px; display: flex; align-items: center; justify-content: space-between; gap: 24px; }
+.account-nav { display: flex; align-items: center; gap: 22px; margin-right: auto; }
+.account-nav a { color: var(--text-secondary); font-size: 13px; font-weight: 700; }
+.account-nav a:hover { color: var(--text); }
 .account-content { padding-block: 36px 70px; }
 .player-summary { display: grid; grid-template-columns: auto minmax(0, 1fr) minmax(190px, auto); gap: 24px; align-items: center; padding: 28px; }
 .player-avatar { width: 86px; height: 86px; margin: 0; font-size: 24px; }
@@ -518,6 +521,8 @@ img { max-width: 100%; }
   .docs-layout { grid-template-columns: 1fr; }
   .docs-sidebar { border-right: 0; border-bottom: 1px solid var(--border); }
   .account-header .admin-identity, .account-header .button-secondary:not(:last-child) { display: none; }
+  .account-nav { gap: 14px; }
+  .account-nav a { font-size: 12px; }
   .player-summary { grid-template-columns: 1fr; }
   .player-avatar { width: 70px; height: 70px; }
   .player-identity { grid-column: auto; grid-template-columns: auto auto; }
