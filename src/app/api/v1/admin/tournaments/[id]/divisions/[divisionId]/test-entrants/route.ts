@@ -5,13 +5,13 @@ import { divisions } from "@/db/schema";
 import { apiData, apiProblem, invalidInput } from "@/lib/api";
 import { getRequestAdmin } from "@/lib/admin-auth-request";
 import { addTestEntrantsToDivision } from "@/lib/admin-tournament-draft";
+import { isSameSiteRequest } from "@/lib/request-origin";
 
 const requestSchema = z.object({ count: z.number().int().min(2).max(64).default(8) });
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string; divisionId: string }> }) {
   try {
-    const origin = request.headers.get("origin");
-    if (origin && origin !== new URL(request.url).origin) return apiProblem(403, "ORIGIN_DENIED", "Access denied", "This request must originate from the admin portal.");
+    if (!isSameSiteRequest(request)) return apiProblem(403, "ORIGIN_DENIED", "Access denied", "This request must originate from the admin portal.");
     const actor = await getRequestAdmin(request);
     if (!actor) return apiProblem(401, "AUTH_REQUIRED", "Authentication required", "A valid administrator session is required.");
     const { id, divisionId } = await params;

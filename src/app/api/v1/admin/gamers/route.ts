@@ -3,6 +3,7 @@ import { apiData, apiProblem, invalidInput, normalizePhone } from "@/lib/api";
 import { getRequestAdmin } from "@/lib/admin-auth-request";
 import { createAdminGamer, listAdminGamers } from "@/lib/admin-gamer-data";
 import { loginEmailForHandle } from "@/lib/slug";
+import { isSameSiteRequest } from "@/lib/request-origin";
 
 const createSchema = z.object({
   displayName: z.string().trim().min(2).max(100),
@@ -15,8 +16,7 @@ const createSchema = z.object({
 });
 
 function guard(request: Request) {
-  const origin = request.headers.get("origin");
-  if (origin && origin !== new URL(request.url).origin) {
+  if (!isSameSiteRequest(request)) {
     return apiProblem(403, "ORIGIN_DENIED", "Access denied", "This request must originate from the admin portal.");
   }
   return null;

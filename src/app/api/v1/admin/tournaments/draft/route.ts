@@ -2,6 +2,7 @@ import { z } from "zod";
 import { apiData, apiProblem, invalidInput } from "@/lib/api";
 import { getRequestAdmin } from "@/lib/admin-auth-request";
 import { saveTournamentDraftToDatabase } from "@/lib/admin-tournament-draft";
+import { isSameSiteRequest } from "@/lib/request-origin";
 
 const stageSchema = z.object({
   id: z.string().min(1),
@@ -54,8 +55,7 @@ const draftSchema = z.object({
 
 export async function PUT(request: Request) {
   try {
-    const origin = request.headers.get("origin");
-    if (origin && origin !== new URL(request.url).origin) return apiProblem(403, "ORIGIN_DENIED", "Access denied", "This request must originate from the admin portal.");
+    if (!isSameSiteRequest(request)) return apiProblem(403, "ORIGIN_DENIED", "Access denied", "This request must originate from the admin portal.");
     const actor = await getRequestAdmin(request);
     if (!actor) return apiProblem(401, "AUTH_REQUIRED", "Authentication required", "A valid administrator session is required.");
     const draft = draftSchema.parse(await request.json());

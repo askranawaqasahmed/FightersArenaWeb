@@ -6,6 +6,7 @@ import { apiData, apiProblem, invalidInput } from "@/lib/api";
 import { getRequestAdmin } from "@/lib/admin-auth-request";
 import { listAdminGames } from "@/lib/game-data";
 import { slugify } from "@/lib/slug";
+import { isSameSiteRequest } from "@/lib/request-origin";
 
 const patchSchema = z.object({
   name: z.string().trim().min(2).max(120).optional(),
@@ -20,8 +21,7 @@ const patchSchema = z.object({
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const origin = request.headers.get("origin");
-    if (origin && origin !== new URL(request.url).origin) {
+    if (!isSameSiteRequest(request)) {
       return apiProblem(403, "ORIGIN_DENIED", "Access denied", "This request must originate from the admin portal.");
     }
     const actor = await getRequestAdmin(request);

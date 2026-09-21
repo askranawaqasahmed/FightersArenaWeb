@@ -2,6 +2,7 @@ import { z } from "zod";
 import { apiData, apiProblem, invalidInput } from "@/lib/api";
 import { getRequestAdmin } from "@/lib/admin-auth-request";
 import { replaceDivisionPlacements } from "@/lib/admin-placement-data";
+import { isSameSiteRequest } from "@/lib/request-origin";
 
 const requestSchema = z.object({
   placements: z.array(z.object({
@@ -13,8 +14,7 @@ const requestSchema = z.object({
 
 export async function PUT(request: Request, { params }: { params: Promise<{ divisionId: string }> }) {
   try {
-    const origin = request.headers.get("origin");
-    if (origin && origin !== new URL(request.url).origin) {
+    if (!isSameSiteRequest(request)) {
       return apiProblem(403, "ORIGIN_DENIED", "Access denied", "This request must originate from the admin portal.");
     }
     const actor = await getRequestAdmin(request);

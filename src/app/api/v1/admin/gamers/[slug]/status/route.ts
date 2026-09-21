@@ -2,13 +2,13 @@ import { z } from "zod";
 import { apiData, apiProblem, invalidInput } from "@/lib/api";
 import { getRequestAdmin } from "@/lib/admin-auth-request";
 import { setGamerAccountStatus } from "@/lib/gamer-account-access";
+import { isSameSiteRequest } from "@/lib/request-origin";
 
 const requestSchema = z.object({ status: z.enum(["active", "suspended"]) });
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ slug: string }> }) {
   try {
-    const origin = request.headers.get("origin");
-    if (origin && origin !== new URL(request.url).origin) {
+    if (!isSameSiteRequest(request)) {
       return apiProblem(403, "ORIGIN_DENIED", "Access denied", "This request must originate from the admin portal.");
     }
     const actor = await getRequestAdmin(request);

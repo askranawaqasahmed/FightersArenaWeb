@@ -5,14 +5,14 @@ import { apiData, apiProblem, invalidInput } from "@/lib/api";
 import { createAccessToken, createOpaqueToken, hashSecret } from "@/lib/auth";
 import { addDays } from "@/lib/date";
 import { env } from "@/lib/env";
+import { isSameSiteRequest } from "@/lib/request-origin";
 
 export async function POST(request: Request) {
   try {
     if (env.NODE_ENV === "production") {
       return apiProblem(404, "NOT_FOUND", "Not found", "This endpoint is not available.");
     }
-    const origin = request.headers.get("origin");
-    if (origin && origin !== new URL(request.url).origin) {
+    if (!isSameSiteRequest(request)) {
       return apiProblem(403, "ORIGIN_DENIED", "Access denied", "This request must originate from this site.");
     }
 

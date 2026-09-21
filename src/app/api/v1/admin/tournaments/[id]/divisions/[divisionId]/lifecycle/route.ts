@@ -5,6 +5,7 @@ import { divisions } from "@/db/schema";
 import { apiData, apiProblem, invalidInput } from "@/lib/api";
 import { getRequestAdmin } from "@/lib/admin-auth-request";
 import { completeDivision, getDivisionPreviewTx, startDivision } from "@/lib/tournament-lifecycle";
+import { isSameSiteRequest } from "@/lib/request-origin";
 
 const actionSchema = z.object({ action: z.enum(["start", "complete"]) });
 
@@ -34,8 +35,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string; divisionId: string }> }) {
   try {
-    const origin = request.headers.get("origin");
-    if (origin && origin !== new URL(request.url).origin) {
+    if (!isSameSiteRequest(request)) {
       return apiProblem(403, "ORIGIN_DENIED", "Access denied", "This request must originate from the admin portal.");
     }
     const actor = await getRequestAdmin(request);

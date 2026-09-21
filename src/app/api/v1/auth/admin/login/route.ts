@@ -7,6 +7,7 @@ import { AdminRole, createAccessToken, createOpaqueToken, hashSecret, isAdminRol
 import { addDays } from "@/lib/date";
 import { verifyPassword } from "@/lib/password";
 import { isProvisionedAdmin } from "@/lib/admin-auth";
+import { isSameSiteRequest } from "@/lib/request-origin";
 
 const requestSchema = z.object({
   email: z.email().transform((value) => value.trim().toLowerCase()),
@@ -15,8 +16,7 @@ const requestSchema = z.object({
 
 export async function POST(request: Request) {
   try {
-    const origin = request.headers.get("origin");
-    if (origin && origin !== new URL(request.url).origin) return apiProblem(403, "ORIGIN_DENIED", "Access denied", "This request must originate from this site.");
+    if (!isSameSiteRequest(request)) return apiProblem(403, "ORIGIN_DENIED", "Access denied", "This request must originate from this site.");
     const input = requestSchema.parse(await request.json());
     const [account] = await db
       .select({
