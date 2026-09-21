@@ -60,9 +60,14 @@ export default async function GamerProfilePage({ params }: { params: Promise<{ s
             </div>
             {gamer.bio && <p className="player-bio">{gamer.bio}</p>}
           </div>
-          <Link className="button button-primary" href={`/api/v1/gamers/${gamer.slug}/profile.pdf`}>
+          {/* A plain anchor, not a Link: the router would try to fetch this as a page. */}
+          <a
+            className="button button-primary"
+            href={`/api/v1/gamers/${gamer.slug}/profile.pdf`}
+            download={`${gamer.slug}-efightersarena-profile.pdf`}
+          >
             <Download size={16} /> Download profile
-          </Link>
+          </a>
         </section>
 
         <section className="performance-grid">
