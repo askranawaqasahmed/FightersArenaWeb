@@ -10,11 +10,13 @@ type GameCompetitionEditorProps = {
   competition: GameCompetitionDraft;
   index: number;
   canRemove: boolean;
+  /** false hides the stage pipeline: the event records final placements only. */
+  hasBracket?: boolean;
   onChange: (competition: GameCompetitionDraft) => void;
   onRemove: () => void;
 };
 
-export function GameCompetitionEditor({ competition, index, canRemove, onChange, onRemove }: GameCompetitionEditorProps) {
+export function GameCompetitionEditor({ competition, index, canRemove, hasBracket = true, onChange, onRemove }: GameCompetitionEditorProps) {
   const { games: availableGames } = useGameCatalog();
   function updateCompetition(changes: Partial<GameCompetitionDraft>) {
     onChange({ ...competition, ...changes });
@@ -68,12 +70,16 @@ export function GameCompetitionEditor({ competition, index, canRemove, onChange,
         </section>
       ) : <LeagueTeamAssignments teams={competition.leagueTeams} playersPerTeam={competition.playersPerTeam} onChange={(leagueTeams) => updateCompetition({ leagueTeams })} />}
 
-      <TournamentStagePipeline
-        value={competition.stages}
-        participantCount={competition.competitionType === "league" ? competition.leagueTeamCount : competition.maxEntries}
-        participantLabel={competition.competitionType === "league" ? "teams" : "participants"}
-        onChange={(stages) => updateCompetition({ stages })}
-      />
+      {hasBracket ? (
+        <TournamentStagePipeline
+          value={competition.stages}
+          participantCount={competition.competitionType === "league" ? competition.leagueTeamCount : competition.maxEntries}
+          participantLabel={competition.competitionType === "league" ? "teams" : "participants"}
+          onChange={(stages) => updateCompetition({ stages })}
+        />
+      ) : (
+        <p className="helper">This event records final results only. Enter the placements on the event page once it is saved.</p>
+      )}
     </article>
   );
 }

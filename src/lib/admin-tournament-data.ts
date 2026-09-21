@@ -67,6 +67,8 @@ export async function getAdminEventFromDatabase(slug: string): Promise<{
     endsAt: event.endsAt?.toISOString().slice(0, 10) ?? "",
     createdAt: event.createdAt.toISOString(),
     location: event.online ? "Online" : "Venue event",
+    hasBracket: event.hasBracket,
+    youtubeUrl: event.youtubeUrl,
     status,
     galleryImages: galleryRows.map((row) => ({
       id: row.id,
@@ -147,6 +149,8 @@ export async function getAdminEventsFromDatabase() {
     endsAt: event.endsAt?.toISOString().slice(0, 10) ?? "",
     createdAt: event.createdAt.toISOString(),
     location: event.online ? "Online" : "Venue event",
+    hasBracket: event.hasBracket,
+    youtubeUrl: event.youtubeUrl,
     status: eventStatus(event.status),
     competitions: competitionRows.filter((item) => item.division.tournamentId === event.id).map(({ division, game }) => ({
       id: division.id,

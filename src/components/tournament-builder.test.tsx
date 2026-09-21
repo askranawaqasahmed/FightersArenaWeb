@@ -10,6 +10,15 @@ const replace = vi.fn();
 const refresh = vi.fn();
 const scrollIntoView = vi.fn();
 
+/** A draft that passes validation: a competition must name a game in the catalogue. */
+const playableDraft = {
+  ...defaultTournamentDraft,
+  name: "National Esports Championship 2027",
+  location: "Karachi Expo Centre",
+  competitions: defaultTournamentDraft.competitions.map((competition) => ({ ...competition, gameSlug: "kof-2002" })),
+};
+const playableSlug = "national-esports-championship-2027";
+
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ replace, refresh }),
 }));
@@ -45,7 +54,7 @@ afterEach(() => {
 
 describe("TournamentBuilder", () => {
   it("saves the complete tournament draft to PostgreSQL and opens its edit URL", async () => {
-    render(<TournamentBuilder initialDraft={defaultTournamentDraft} />);
+    render(<TournamentBuilder initialDraft={playableDraft} />);
 
     expect(screen.getByRole("region", { name: "Event structure preview" })).toBeInTheDocument();
 
@@ -148,11 +157,12 @@ describe("TournamentBuilder", () => {
     render(<TournamentBuilder initialDraft={defaultTournamentDraft} />);
     fireEvent.click(screen.getByRole("button", { name: "Add game competition" }));
     expect(screen.getByText("GAME COMPETITION 2")).toBeInTheDocument();
-    expect(screen.getAllByRole("combobox", { name: "Game" })[1]).toHaveValue("valorant");
+    // A new competition starts without a game; the operator picks one from the catalogue.
+    expect(screen.getAllByRole("combobox", { name: "Game" })[1]).toHaveValue("");
   });
 
   it("keeps registration unrestricted unless an admin enables a slot limit", () => {
-    render(<TournamentBuilder initialDraft={defaultTournamentDraft} />);
+    render(<TournamentBuilder initialDraft={playableDraft} />);
     const restriction = screen.getByRole("checkbox", { name: "Restrict registration slots" });
     expect(restriction).not.toBeChecked();
     expect(screen.queryByRole("spinbutton", { name: "Registration slot limit" })).not.toBeInTheDocument();
@@ -162,8 +172,30 @@ describe("TournamentBuilder", () => {
     fireEvent.click(screen.getByRole("button", { name: "Save draft" }));
 
     const drafts = JSON.parse(window.localStorage.getItem(tournamentDraftStorageKey) ?? "{}");
-    expect(drafts[defaultTournamentDraft.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")].competitions[0])
+    expect(drafts[playableSlug].competitions[0])
       .toMatchObject({ registrationRestricted: true, registrationLimit: 32 });
+  });
+
+  it("saves an event with no bracket and no stages", async () => {
+    render(<TournamentBuilder initialDraft={playableDraft} />);
+
+    fireEvent.change(screen.getByRole("combobox", { name: "Bracket" }), { target: { value: "result" } });
+    expect(screen.queryByRole("button", { name: /Add stage/ })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Save draft" }));
+    expect(await screen.findByRole("status")).toHaveTextContent("Event draft saved successfully to PostgreSQL");
+
+    const drafts = JSON.parse(window.localStorage.getItem(tournamentDraftStorageKey) ?? "{}");
+    expect(drafts[playableSlug]).toMatchObject({ hasBracket: false, competitions: [{ stages: [] }] });
+  });
+
+  it("rejects a YouTube link that is not a YouTube address", () => {
+    render(<TournamentBuilder initialDraft={playableDraft} />);
+
+    fireEvent.change(screen.getByRole("textbox", { name: "YouTube link" }), { target: { value: "https://example.com/watch?v=abc" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save draft" }));
+
+    expect(screen.getByRole("alert")).toHaveTextContent("Enter a valid YouTube link");
   });
 
   it("offers active games from the database catalog", async () => {

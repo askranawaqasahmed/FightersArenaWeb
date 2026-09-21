@@ -10,13 +10,6 @@ function databaseStageFormat(format: StageFormat) {
   return format === "single-elimination" ? "single_elimination" as const : "double_elimination" as const;
 }
 
-function gameName(slug: string) {
-  if (slug === "dota-2") return "Dota 2";
-  if (slug === "valorant") return "VALORANT";
-  if (slug === "tekken-8") return "Tekken 8";
-  return slug.split("-").map((part) => `${part.charAt(0).toUpperCase()}${part.slice(1)}`).join(" ");
-}
-
 function eventDate(value: string) {
   return new Date(`${value}T00:00:00+05:00`);
 }
@@ -50,6 +43,8 @@ export async function saveTournamentDraftToDatabase(
       endsAt: eventDate(draft.endsAt),
       online: draft.location.trim().toLowerCase() === "online",
       bannerUrl: draft.imageUrl || null,
+      hasBracket: draft.hasBracket,
+      youtubeUrl: draft.youtubeUrl?.trim() || null,
       updatedAt: new Date(),
     };
     const [event] = existing
@@ -58,15 +53,15 @@ export async function saveTournamentDraftToDatabase(
 
     const lifecycleCompetitions: AdminLifecycleCompetition[] = [];
     for (const competition of draft.competitions) {
-      let [game] = await tx.select().from(games).where(eq(games.slug, competition.gameSlug)).limit(1);
+      // Games come from the catalogue only: silently creating one here used to
+      // put placeholder rows on the public site.
+      const [game] = await tx.select().from(games).where(eq(games.slug, competition.gameSlug)).limit(1);
       if (!game) {
-        [game] = await tx.insert(games).values({
-          slug: competition.gameSlug,
-          name: gameName(competition.gameSlug),
-          genre: "Other",
-          teamSize: competition.competitionType === "league" ? competition.playersPerTeam : 1,
-          coverGradient: "green",
-        }).returning();
+        throw new LifecycleError(
+          "GAME_NOT_FOUND",
+          `"${competition.name}" refers to a game that is not in the catalogue. Add it under Games first.`,
+          422,
+        );
       }
       const participantType = competition.competitionType === "league" ? "team" as const : "gamer" as const;
       const maxParticipants = competition.competitionType === "league" ? competition.leagueTeamCount : competition.maxEntries;

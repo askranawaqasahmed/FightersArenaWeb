@@ -15,6 +15,15 @@ describe("admin tournament draft lifecycle against PostgreSQL", () => {
     let tournamentId: string | undefined;
     let divisionId: string | undefined;
 
+    // The draft no longer creates unknown games, so the catalogue entry comes first.
+    await db.insert(games).values({
+      slug: gameSlug,
+      name: `Builder Game ${suffix}`,
+      genre: "Fighting",
+      teamSize: 1,
+      coverGradient: "green",
+    });
+
     try {
       const saved = await saveTournamentDraftToDatabase({
         slug,
@@ -25,6 +34,8 @@ describe("admin tournament draft lifecycle against PostgreSQL", () => {
         startsAt: "2027-08-18",
         endsAt: "2027-08-24",
         location: "Karachi",
+        hasBracket: true,
+        youtubeUrl: "",
         attachments: [],
         competitions: [createGameCompetition("competition-1", {
           name: "Integration Open",

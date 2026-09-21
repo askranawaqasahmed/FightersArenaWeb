@@ -54,6 +54,9 @@ export type AdminEvent = {
   endsAt: string;
   createdAt?: string;
   location: string;
+  /** false records the event as a final result only, with no stages or matches. */
+  hasBracket?: boolean;
+  youtubeUrl?: string | null;
   status: "DRAFT" | "REGISTRATION OPEN" | "READY" | "LIVE" | "COMPLETED";
   competitions: AdminEventCompetition[];
 };
