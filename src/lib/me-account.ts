@@ -7,7 +7,7 @@ import { hashPassword, verifyPassword } from "@/lib/password";
 
 export type AccountMutationResult =
   | { ok: true; revokedSessions?: number }
-  | { ok: false; reason: "NO_PASSWORD" | "INVALID_PASSWORD" | "EMAIL_TAKEN" | "SAME_PASSWORD" };
+  | { ok: false; reason: "NO_PASSWORD" | "INVALID_PASSWORD" | "EMAIL_TAKEN" | "PHONE_TAKEN" | "SAME_PASSWORD" };
 
 export async function changeOwnPassword(
   userId: string,
@@ -44,6 +44,46 @@ export async function changeOwnPassword(
       metadata: { revokedSessions: revoked.length },
     });
     return { ok: true as const, revokedSessions: revoked.length };
+  });
+}
+
+/**
+ * A mobile number is contact information, not a credential, so it needs no
+ * password confirmation. It still has to be unique, because signup checks it.
+ */
+export async function changeOwnPhone(userId: string, phone: string | null): Promise<AccountMutationResult> {
+  return db.transaction(async (transaction) => {
+    const [existing] = await transaction.select({ id: userIdentities.id, value: userIdentities.normalizedValue })
+      .from(userIdentities)
+      .where(and(eq(userIdentities.userId, userId), eq(userIdentities.type, "phone")))
+      .limit(1);
+
+    if (phone === null) {
+      if (existing) await transaction.delete(userIdentities).where(eq(userIdentities.id, existing.id));
+      return { ok: true as const };
+    }
+
+    const [taken] = await transaction.select({ userId: userIdentities.userId }).from(userIdentities)
+      .where(and(eq(userIdentities.type, "phone"), eq(userIdentities.normalizedValue, phone))).limit(1);
+    if (taken && taken.userId !== userId) return { ok: false as const, reason: "PHONE_TAKEN" as const };
+
+    if (existing) {
+      if (existing.value === phone) return { ok: true as const };
+      await transaction.update(userIdentities)
+        .set({ normalizedValue: phone, verifiedAt: null, updatedAt: new Date() })
+        .where(eq(userIdentities.id, existing.id));
+    } else {
+      await transaction.insert(userIdentities).values({ userId, type: "phone", normalizedValue: phone });
+    }
+
+    await transaction.insert(auditEvents).values({
+      actorUserId: userId,
+      action: "gamer.phone_changed",
+      entityType: "user",
+      entityId: userId,
+      metadata: { previousPhone: existing?.value ?? null, phone },
+    });
+    return { ok: true as const };
   });
 }
 

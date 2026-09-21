@@ -2,7 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AtSign, KeyRound } from "lucide-react";
+import { AtSign, KeyRound, Phone } from "lucide-react";
 
 type Props = {
   email: string | null;
@@ -15,9 +15,14 @@ export function DashboardAccountSettings({ email, phone, mustChangePassword }: P
 
   const [nextEmail, setNextEmail] = useState(email ?? "");
   const [emailPassword, setEmailPassword] = useState("");
-  const [emailMessage, setEmailMessage] = useState("Your email address is also your sign-in name.");
+  const [emailMessage, setEmailMessage] = useState("Your email address is how you sign in.");
   const [emailError, setEmailError] = useState(false);
   const [emailLoading, setEmailLoading] = useState(false);
+
+  const [nextPhone, setNextPhone] = useState(phone ?? "");
+  const [phoneMessage, setPhoneMessage] = useState("Contact detail only. It is not used to sign in.");
+  const [phoneError, setPhoneError] = useState(false);
+  const [phoneLoading, setPhoneLoading] = useState(false);
 
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -51,6 +56,29 @@ export function DashboardAccountSettings({ email, phone, mustChangePassword }: P
       router.refresh();
     } finally {
       setEmailLoading(false);
+    }
+  }
+
+  async function submitPhone(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setPhoneLoading(true);
+    setPhoneError(false);
+    try {
+      const response = await fetch("/api/v1/me/phone", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ phone: nextPhone.trim() === "" ? null : nextPhone }),
+      });
+      const body = await response.json();
+      if (!response.ok) {
+        setPhoneError(true);
+        setPhoneMessage(body.errors?.[0]?.message ?? body.detail ?? "The mobile number could not be saved.");
+        return;
+      }
+      setPhoneMessage(body.data.phone ? `Saved as ${body.data.phone}.` : "Mobile number removed.");
+      router.refresh();
+    } finally {
+      setPhoneLoading(false);
     }
   }
 
@@ -119,7 +147,6 @@ export function DashboardAccountSettings({ email, phone, mustChangePassword }: P
       <section className="card panel">
         <h2 className="panel-title"><AtSign size={17} /> Email address</h2>
         <div className="achievement"><span>Current email</span><strong>{email ?? "Not set"}</strong></div>
-        {phone && <div className="achievement"><span>Mobile</span><strong>{phone}</strong></div>}
         <form className="auth-form" onSubmit={submitEmail}>
           <label className="form-group">
             <span className="form-label">New email address</span>
@@ -131,6 +158,16 @@ export function DashboardAccountSettings({ email, phone, mustChangePassword }: P
           </label>
           <button className="button button-secondary" disabled={emailLoading}>{emailLoading ? "Saving…" : "Change email"}</button>
           <p className={`helper${emailError ? " form-error" : ""}`} role="status">{emailMessage}</p>
+        </form>
+
+        <h2 className="panel-title" style={{ marginTop: 26 }}><Phone size={17} /> Mobile number</h2>
+        <form className="auth-form" onSubmit={submitPhone}>
+          <label className="form-group">
+            <span className="form-label">Mobile number</span>
+            <input className="input" type="tel" autoComplete="tel" value={nextPhone} onChange={(event) => setNextPhone(event.target.value)} placeholder="03001234567" />
+          </label>
+          <button className="button button-secondary" disabled={phoneLoading}>{phoneLoading ? "Saving…" : "Save mobile number"}</button>
+          <p className={`helper${phoneError ? " form-error" : ""}`} role="status">{phoneMessage}</p>
         </form>
       </section>
     </div>

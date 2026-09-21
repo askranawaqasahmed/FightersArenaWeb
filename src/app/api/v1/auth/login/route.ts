@@ -2,37 +2,36 @@ import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db/client";
 import { gamerCredentials, gamerProfiles, userIdentities, users } from "@/db/schema";
-import { apiData, apiProblem, invalidInput, normalizePhone } from "@/lib/api";
+import { apiData, apiProblem, invalidInput } from "@/lib/api";
 import { createAccessToken } from "@/lib/auth";
 import { attachSessionCookies, createSessionRecord } from "@/lib/gamer-session";
 import { verifyPassword } from "@/lib/password";
 import { checkRateLimit } from "@/lib/rate-limit";
 
+/**
+ * Players sign in with their email address. A mobile number is contact
+ * information on the profile and is not a credential.
+ */
 const requestSchema = z.object({
+  email: z.string().trim().min(3).max(255).optional(),
+  // Older clients sent the address as `identifier`.
   identifier: z.string().trim().min(3).max(255).optional(),
-  phone: z.string().min(8).max(24).optional(),
   password: z.string().min(1).max(128),
-}).refine((value) => Boolean(value.identifier ?? value.phone), {
-  message: "Enter your email address or mobile number.",
-  path: ["identifier"],
+}).refine((value) => Boolean(value.email ?? value.identifier), {
+  message: "Enter your email address.",
+  path: ["email"],
 });
 
-const invalidCredentials = () => apiProblem(401, "INVALID_CREDENTIALS", "Sign in failed", "The email/phone or password is incorrect.");
+const invalidCredentials = () => apiProblem(401, "INVALID_CREDENTIALS", "Sign in failed", "The email address or password is incorrect.");
 
 export async function POST(request: Request) {
   try {
     const input = requestSchema.parse(await request.json());
-    const raw = (input.identifier ?? input.phone ?? "").trim();
+    const raw = (input.email ?? input.identifier ?? "").trim();
+    if (!raw.includes("@")) return invalidCredentials();
 
-    let identityType: "email" | "phone";
-    let identityValue: string;
-    if (raw.includes("@")) {
-      identityType = "email";
-      identityValue = raw.toLowerCase();
-    } else {
-      identityType = "phone";
-      try { identityValue = normalizePhone(raw); } catch { return invalidCredentials(); }
-    }
+    const identityType = "email" as const;
+    const identityValue = raw.toLowerCase();
 
     const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
     if (!checkRateLimit(`login:${identityValue}`, { limit: 10, windowMs: 15 * 60_000 })

@@ -8,9 +8,9 @@ import { Brand } from "@/components/brand";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [identifier, setIdentifier] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [message, setMessage] = useState("Sign in with your email address or mobile number.");
+  const [message, setMessage] = useState("Sign in with the email address on your player account.");
   const [error, setError] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -22,7 +22,7 @@ export default function LoginPage() {
       const response = await fetch("/api/v1/auth/login", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ identifier, password }),
+        body: JSON.stringify({ email, password }),
       });
       const body = await response.json();
       if (response.ok) {
@@ -41,5 +41,5 @@ export default function LoginPage() {
     }
   }
 
-  return <main className="auth-page"><section className="card auth-card"><Brand /><h1>Enter the arena.</h1><p className="muted">Sign in to manage your player profile and competition history.</p><form className="auth-form" onSubmit={signIn}><label className="form-group"><span className="form-label">Email or mobile number</span><input className="input" type="text" autoComplete="username" value={identifier} onChange={(event) => setIdentifier(event.target.value)} required /></label><label className="form-group"><span className="form-label">Password</span><input className="input" type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} required /></label><button className="button button-primary" disabled={loading}><LockKeyhole size={16} /> {loading ? "Signing in…" : "Sign in"}</button><p className={`helper${error ? " form-error" : ""}`} role="status">{message}</p></form><Link className="text-link" href="/">Return to public site</Link></section></main>;
+  return <main className="auth-page"><section className="card auth-card"><Brand /><h1>Enter the arena.</h1><p className="muted">Sign in to manage your player profile and competition history.</p><form className="auth-form" onSubmit={signIn}><label className="form-group"><span className="form-label">Email address</span><input className="input" type="email" autoComplete="username" value={email} onChange={(event) => setEmail(event.target.value)} required /></label><label className="form-group"><span className="form-label">Password</span><input className="input" type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} required /></label><button className="button button-primary" disabled={loading}><LockKeyhole size={16} /> {loading ? "Signing in…" : "Sign in"}</button><p className={`helper${error ? " form-error" : ""}`} role="status">{message}</p></form><Link className="text-link" href="/">Return to public site</Link></section></main>;
 }
