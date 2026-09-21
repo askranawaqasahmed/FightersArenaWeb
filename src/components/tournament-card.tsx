@@ -23,7 +23,7 @@ export function TournamentCard({ tournament }: { tournament: Tournament }) {
       </div>
       <div className="tournament-meta"><strong className="green">{tournament.game}</strong><br />{tournament.format}</div>
       <div className="tournament-meta"><CalendarDays size={13} /> {tournament.date}{tournament.prize && <><br /><Trophy size={13} /> {tournament.prize}</>}</div>
-      <div><strong>{tournament.teams}</strong> participants <ArrowRight size={16} /></div>
+      <div><strong>{tournament.teams}</strong> {tournament.teams === 1 ? "participant" : "participants"} <ArrowRight size={16} /></div>
     </Link>
   );
 }

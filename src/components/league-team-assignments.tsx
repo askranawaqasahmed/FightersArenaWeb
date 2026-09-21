@@ -1,19 +1,22 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import type { LeagueTeamDraft } from "@/lib/tournament-draft";
 
-const playerOptions = [
-  ["nova", "NOVA", "Ayaan Khan"],
-  ["viper", "VIPER", "Hassan Raza"],
-  ["raven", "RAVEN", "Sara Malik"],
-  ["frost", "FROST", "Ali Noor"],
-  ["cipher", "CIPHER", "Hamza Ahmed"],
-  ["volt", "VOLT", "Zain Shah"],
-  ["aegis", "AEGIS", "Mariam Iqbal"],
-  ["orbit", "ORBIT", "Usman Tariq"],
-  ["ember", "EMBER", "Hira Khan"],
-  ["zenith", "ZENITH", "Bilal Akram"],
-] as const;
+function useLeaguePlayers() {
+  const [gamers, setGamers] = useState<Array<{ id: string; handle: string; displayName: string }>>([]);
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/v1/admin/gamers/selectable")
+      .then((response) => (response.ok ? response.json() : Promise.reject(new Error("unavailable"))))
+      .then((body) => { if (!cancelled) setGamers(body.data?.gamers ?? []); })
+      .catch(() => { if (!cancelled) setGamers([]); });
+    return () => { cancelled = true; };
+  }, []);
+  return { gamers };
+}
+
+type PlayerOption = readonly [id: string, handle: string, name: string];
 
 type LeagueTeamAssignmentsProps = {
   teams: LeagueTeamDraft[];
@@ -22,6 +25,10 @@ type LeagueTeamAssignmentsProps = {
 };
 
 export function LeagueTeamAssignments({ teams, playersPerTeam, onChange }: LeagueTeamAssignmentsProps) {
+  // Real registered players, so a league roster can only contain accounts that exist.
+  const { gamers } = useLeaguePlayers();
+  const playerOptions: PlayerOption[] = gamers.map((gamer) => [gamer.id, gamer.handle, gamer.displayName] as const);
+
   function updateTeam(id: string, changes: Partial<LeagueTeamDraft>) {
     onChange(teams.map((team) => team.id === id ? { ...team, ...changes } : team));
   }

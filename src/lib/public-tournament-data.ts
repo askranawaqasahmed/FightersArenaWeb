@@ -267,6 +267,17 @@ export async function getPublicTournaments(executor: DbExecutor = db): Promise<P
   }
 
   const counts = await tournamentCounts([...byTournament.keys()], executor);
+
+  // Events recorded without a bracket have no registrations; count their snapshots instead.
+  const snapshotCounts = byTournament.size > 0
+    ? await executor
+      .select({ tournamentId: tournamentParticipantSnapshots.tournamentId, value: count() })
+      .from(tournamentParticipantSnapshots)
+      .where(inArray(tournamentParticipantSnapshots.tournamentId, [...byTournament.keys()]))
+      .groupBy(tournamentParticipantSnapshots.tournamentId)
+    : [];
+  const snapshotByTournament = new Map(snapshotCounts.map((row) => [row.tournamentId, Number(row.value)]));
+
   return [...byTournament.entries()].map(([id, entry]) => {
     const gameNames = [...entry.games];
     const formats = [...entry.formats];
@@ -281,7 +292,11 @@ export async function getPublicTournaments(executor: DbExecutor = db): Promise<P
       statusLabel: publicStatusLabel(entry.row.status),
       game: gameNames.length ? gameNames.join(", ") : "Game to be announced",
       games: gameNames,
-      format: formats.length === 1 ? publicFormatLabel(formats[0]) : formats.length > 1 ? "Multi-format event" : publicFormatLabel(null),
+      format: formats.length === 1
+        ? publicFormatLabel(formats[0])
+        : formats.length > 1
+          ? "Multi-format event"
+          : entry.row.hasBracket ? publicFormatLabel(null) : "Final result",
       date: formatDateRange(entry.row.startsAt, entry.row.endsAt, entry.row.datePrecision),
       startsAt: entry.row.startsAt?.toISOString() ?? null,
       endsAt: entry.row.endsAt?.toISOString() ?? null,
@@ -292,7 +307,7 @@ export async function getPublicTournaments(executor: DbExecutor = db): Promise<P
       hasBracket: entry.row.hasBracket,
       youtubeUrl: entry.row.youtubeUrl,
       datePrecision: entry.row.datePrecision,
-      teams: counts.participants.get(id) ?? 0,
+      teams: counts.participants.get(id) || snapshotByTournament.get(id) || 0,
       divisions: entry.divisions.size,
       // A completed event with no matches is an imported result, not an unstarted one.
       progress: total === 0 && entry.row.status === "completed" ? 100 : progressPercent(finished, total),

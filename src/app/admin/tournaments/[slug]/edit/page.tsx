@@ -1,14 +1,15 @@
 import { TournamentBuilder } from "@/components/tournament-builder";
-import { adminEvents } from "@/lib/admin-events";
 import { getAdminEventFromDatabase } from "@/lib/admin-tournament-data";
 import { createGameCompetition, createLeagueTeam, createStage, defaultTournamentDraft, type TournamentDraft } from "@/lib/tournament-draft";
+
+export const dynamic = "force-dynamic";
 
 export const metadata = { title: "Edit Event" };
 
 export default async function EditTournamentPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const databaseEvent = await getAdminEventFromDatabase(slug);
-  const event = databaseEvent?.event ?? adminEvents.find((item) => item.slug === slug);
+  const event = databaseEvent?.event;
   const initialDraft: TournamentDraft = event ? {
     slug,
     name: event.name,

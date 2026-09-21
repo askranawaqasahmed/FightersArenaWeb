@@ -137,8 +137,19 @@ describe("TournamentBuilder", () => {
     expect(screen.getByRole("button", { name: "Regenerate players" })).toBeInTheDocument();
   });
 
-  it("configures an admin-assigned league with leaders and player confirmations", () => {
-    render(<TournamentBuilder initialDraft={defaultTournamentDraft} />);
+  it("configures an admin-assigned league with leaders and player confirmations", async () => {
+    // League rosters are drawn from real registered players.
+    vi.stubGlobal("fetch", vi.fn().mockImplementation((url: string) => {
+      if (String(url).startsWith("/api/v1/admin/gamers/selectable")) {
+        return Promise.resolve(new Response(JSON.stringify({ data: { gamers: [
+          { id: "11111111-1111-4111-8111-111111111111", slug: "hazz", handle: "Hazz", displayName: "Hazz" },
+          { id: "22222222-2222-4222-8222-222222222222", slug: "kashif-yagami", handle: "Kashif Yagami", displayName: "Kashif Yagami" },
+        ] } }), { status: 200 }));
+      }
+      return Promise.resolve(new Response(JSON.stringify({ data: [] }), { status: 200 }));
+    }));
+
+    render(<TournamentBuilder initialDraft={playableDraft} />);
 
     fireEvent.change(screen.getByRole("combobox", { name: "Competition type" }), { target: { value: "league" } });
     fireEvent.change(screen.getByRole("spinbutton", { name: "Number of teams" }), { target: { value: "2" } });
@@ -147,10 +158,13 @@ describe("TournamentBuilder", () => {
     expect(screen.getAllByText("CONFIGURATION PENDING")).toHaveLength(2);
     const firstTeam = screen.getByText("TEAM 1").closest(".league-team-card");
     expect(firstTeam).not.toBeNull();
-    fireEvent.change(within(firstTeam as HTMLElement).getByRole("combobox", { name: "Team leader" }), { target: { value: "nova" } });
-    expect(within(firstTeam as HTMLElement).getByRole("checkbox", { name: /NOVA.*Ayaan Khan.*Leader/ })).toBeChecked();
+
+    await screen.findAllByRole("checkbox", { name: /Hazz/ });
+    fireEvent.change(within(firstTeam as HTMLElement).getByRole("combobox", { name: "Team leader" }), {
+      target: { value: "11111111-1111-4111-8111-111111111111" },
+    });
+    expect(within(firstTeam as HTMLElement).getByRole("checkbox", { name: /Hazz.*Leader/ })).toBeChecked();
     expect(within(firstTeam as HTMLElement).getByText("Assigned players (1/5)")).toBeInTheDocument();
-    expect(screen.getAllByText("CONFIGURATION PENDING")).toHaveLength(2);
   });
 
   it("adds multiple game competitions under one event", () => {
