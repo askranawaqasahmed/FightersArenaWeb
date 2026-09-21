@@ -4,7 +4,6 @@ import "@testing-library/jest-dom/vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { TournamentBuilder } from "./tournament-builder";
-import { gameCatalogStorageKey } from "./game-catalog-manager";
 import { createGameCompetition, createStage, defaultTournamentDraft, tournamentDraftStorageKey } from "@/lib/tournament-draft";
 
 const replace = vi.fn();
@@ -21,16 +20,22 @@ beforeEach(() => {
   refresh.mockClear();
   scrollIntoView.mockClear();
   HTMLElement.prototype.scrollIntoView = scrollIntoView;
-  vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({ data: { tournamentId: "11111111-1111-4111-8111-111111111111", slug: "summer-arena", lifecycleCompetitions: [{
-    tournamentId: "11111111-1111-4111-8111-111111111111",
-    divisionId: "22222222-2222-4222-8222-222222222222",
-    name: "Dota 2 Open",
-    game: "Dota 2",
-    status: "DRAFT",
-    actualParticipants: 0,
-    totalMatches: 0,
-    unfinishedMatches: 0,
-  }] } }), { status: 200 })));
+  // The builder also loads the game catalogue on mount, so answer per route.
+  vi.stubGlobal("fetch", vi.fn().mockImplementation((url: string) => {
+    if (String(url).startsWith("/api/v1/games")) {
+      return Promise.resolve(new Response(JSON.stringify({ data: [] }), { status: 200 }));
+    }
+    return Promise.resolve(new Response(JSON.stringify({ data: { tournamentId: "11111111-1111-4111-8111-111111111111", slug: "summer-arena", lifecycleCompetitions: [{
+      tournamentId: "11111111-1111-4111-8111-111111111111",
+      divisionId: "22222222-2222-4222-8222-222222222222",
+      name: "Dota 2 Open",
+      game: "Dota 2",
+      status: "DRAFT",
+      actualParticipants: 0,
+      totalMatches: 0,
+      unfinishedMatches: 0,
+    }] } }), { status: 200 }));
+  }));
 });
 
 afterEach(() => {
@@ -161,9 +166,11 @@ describe("TournamentBuilder", () => {
       .toMatchObject({ registrationRestricted: true, registrationLimit: 32 });
   });
 
-  it("offers active games created in the game catalog", () => {
-    window.localStorage.setItem(gameCatalogStorageKey, JSON.stringify([{ slug: "rocket-league", name: "Rocket League", genre: "Sports", participantMode: "team", teamSize: 3, roles: "Player", active: true }]));
+  it("offers active games from the database catalog", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      data: [{ id: "g1", slug: "rocket-league", name: "Rocket League", genre: "Sports", publisher: null, teamSize: 3, imageUrl: null }],
+    }), { status: 200, headers: { "content-type": "application/json" } })));
     render(<TournamentBuilder initialDraft={defaultTournamentDraft} />);
-    expect(screen.getByRole("option", { name: "Rocket League · Sports" })).toBeInTheDocument();
+    expect(await screen.findByRole("option", { name: "Rocket League · Sports" })).toBeInTheDocument();
   });
 });

@@ -3,56 +3,93 @@
 import "@testing-library/jest-dom/vitest";
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { AdminGamerDetail } from "./admin-gamer-detail";
+import { AdminGamerDetail, type AdminGamerDetailData } from "./admin-gamer-detail";
 import { AdminGamerDirectory } from "./admin-gamer-directory";
-import { AdminGamerEditor } from "./admin-gamer-editor";
-import { gamerDirectoryStorageKey } from "./managed-gamers";
+import { AdminGamerEditor, type AdminGamerEditorData } from "./admin-gamer-editor";
+import type { AdminGamerListItem } from "@/lib/admin-gamer-data";
 
 const replace = vi.fn();
 const refresh = vi.fn();
-vi.mock("next/navigation", () => ({ useRouter: () => ({ replace, refresh }) }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ replace, refresh, push: vi.fn() }) }));
 
-beforeEach(() => { window.localStorage.clear(); replace.mockClear(); refresh.mockClear(); });
+const gamers: AdminGamerListItem[] = [
+  {
+    slug: "hazz", displayName: "Hazz", handle: "Hazz", email: "hazz@fightersarena.com", phone: "+923431263350",
+    city: "Karachi", game: "Fatal Fury: City of the Wolves", points: 0, verificationStatus: "verified", accountStatus: "active",
+  },
+  {
+    slug: "kashif-yagami", displayName: "Kashif Yagami", handle: "Kashif Yagami", email: "kashifyagami@fightersarena.com",
+    phone: "+923212281481", city: "Lahore", game: "Street Fighter V", points: 0, verificationStatus: "verified", accountStatus: "active",
+  },
+];
+
+const detail: AdminGamerDetailData = {
+  slug: "hazz", displayName: "Hazz", handle: "Hazz", bio: null,
+  email: "hazz@fightersarena.com", phone: "+923431263350", city: "Karachi", country: "Pakistan",
+  rankingPoints: 0, verificationStatus: "verified", accountStatus: "active",
+  games: [{ gameId: "game-1", game: "Fatal Fury: City of the Wolves", inGameName: "Hazz", verified: true }],
+  achievements: [{ id: "a1", category: "milestone", title: "Undefeated KOF 2002 run", detail: null, yearLabel: "2014–2019" }],
+  placements: [
+    { tournamentName: "Takedown 2025", gameName: "Fatal Fury: City of the Wolves", year: 2025, finalRank: 1, placementLabel: null },
+    { tournamentName: "Takedown 2026", gameName: "Fatal Fury: City of the Wolves", year: 2026, finalRank: 2, placementLabel: null },
+  ],
+};
+
+const editable: AdminGamerEditorData = {
+  slug: "hazz", displayName: "Hazz", handle: "Hazz", bio: null, cityId: null,
+  profileVisibility: "public", verificationStatus: "verified", rankingPoints: 0,
+  games: [{ gameId: "game-1", inGameName: "Hazz" }],
+  achievements: [],
+};
+
+beforeEach(() => { replace.mockClear(); refresh.mockClear(); });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
 describe("admin gamers", () => {
   it("filters gamer rows and provides working detail/edit links", () => {
-    render(<AdminGamerDirectory />);
+    render(<AdminGamerDirectory gamers={gamers} />);
 
     const filters = screen.getByLabelText("Gamer directory filters");
     expect(within(filters).getAllByRole("combobox")).toHaveLength(3);
     expect(within(filters).getByRole("textbox", { name: "Search gamers" }).closest("label")).toHaveClass("directory-search");
 
-    fireEvent.change(screen.getByRole("combobox", { name: "Filter gamers by game" }), { target: { value: "Dota 2" } });
-    expect(screen.getByText("NOVA")).toBeInTheDocument();
-    expect(screen.queryByText("VIPER")).not.toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "View NOVA" })).toHaveAttribute("href", "/admin/gamers/nova");
-    expect(screen.getByRole("link", { name: "Edit NOVA" })).toHaveAttribute("href", "/admin/gamers/nova/edit");
+    fireEvent.change(screen.getByRole("combobox", { name: "Filter gamers by game" }), { target: { value: "Street Fighter V" } });
+    expect(screen.queryByRole("link", { name: "View Hazz" })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "View Kashif Yagami" })).toHaveAttribute("href", "/admin/gamers/kashif-yagami");
+    expect(screen.getByRole("link", { name: "Edit Kashif Yagami" })).toHaveAttribute("href", "/admin/gamers/kashif-yagami/edit");
   });
 
-  it("shows match results under player history", () => {
-    render(<AdminGamerDetail slug="nova" />);
-
-    expect(screen.getByRole("heading", { name: /Player history/ })).toBeInTheDocument();
-    expect(screen.getByRole("columnheader", { name: "Opponent" })).toBeInTheDocument();
-    expect(screen.getByText("VOLT")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /Edit gamer/ })).toHaveAttribute("href", "/admin/gamers/nova/edit");
+  it("searches by the sign-in email", () => {
+    render(<AdminGamerDirectory gamers={gamers} />);
+    fireEvent.change(screen.getByRole("textbox", { name: "Search gamers" }), { target: { value: "kashifyagami@" } });
+    expect(screen.getByRole("link", { name: "View Kashif Yagami" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "View Hazz" })).not.toBeInTheDocument();
   });
 
-  it("blocks a database-backed gamer and revokes active sessions", async () => {
+  it("shows recorded results using the Champion wording", () => {
+    render(<AdminGamerDetail gamer={detail} />);
+
+    expect(screen.getByRole("heading", { name: /Tournament results/ })).toBeInTheDocument();
+    expect(screen.getByText("Champion")).toBeInTheDocument();
+    expect(screen.getByText("Runner-up")).toBeInTheDocument();
+    expect(screen.queryByText("1st")).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Edit gamer/ })).toHaveAttribute("href", "/admin/gamers/hazz/edit");
+  });
+
+  it("blocks a gamer and revokes active sessions", async () => {
     vi.stubGlobal("confirm", vi.fn(() => true));
     const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ data: {
-      slug: "nova",
+      slug: "hazz",
       status: "suspended",
       revokedSessions: 2,
     } }), { status: 200, headers: { "content-type": "application/json" } }));
     vi.stubGlobal("fetch", fetchMock);
-    render(<AdminGamerDetail slug="nova" initialAccountStatus="active" />);
+    render(<AdminGamerDetail gamer={detail} />);
 
     fireEvent.click(screen.getByRole("button", { name: "Block gamer" }));
 
-    expect(await screen.findByText(/NOVA is blocked and all active sessions were revoked/)).toBeInTheDocument();
-    expect(fetchMock).toHaveBeenCalledWith("/api/v1/admin/gamers/nova/status", expect.objectContaining({
+    expect(await screen.findByText(/Hazz is blocked and all active sessions were revoked/)).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledWith("/api/v1/admin/gamers/hazz/status", expect.objectContaining({
       method: "PATCH",
       body: JSON.stringify({ status: "suspended" }),
     }));
@@ -61,15 +98,18 @@ describe("admin gamers", () => {
     expect(refresh).toHaveBeenCalled();
   });
 
-  it("edits a gamer and returns to the detail route", () => {
-    render(<AdminGamerEditor slug="nova" />);
+  it("saves an edited gamer to the database and returns to the detail route", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ data: { gamer: {} } }), {
+      status: 200, headers: { "content-type": "application/json" },
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+    render(<AdminGamerEditor gamer={editable} gameOptions={[{ id: "game-1", name: "Fatal Fury: City of the Wolves" }]} cityOptions={[{ id: "city-1", name: "Karachi" }]} />);
 
-    fireEvent.change(screen.getByRole("textbox", { name: "Full name" }), { target: { value: "Areeb Ahmed Khan" } });
-    fireEvent.change(screen.getByRole("combobox", { name: "Primary game" }), { target: { value: "VALORANT" } });
+    fireEvent.change(screen.getByRole("textbox", { name: "Display name" }), { target: { value: "Hassan" } });
     fireEvent.click(screen.getByRole("button", { name: "Save gamer" }));
 
-    const stored = JSON.parse(window.localStorage.getItem(gamerDirectoryStorageKey) ?? "[]");
-    expect(stored).toEqual(expect.arrayContaining([expect.objectContaining({ slug: "nova", name: "Areeb Ahmed Khan", game: "VALORANT" })]));
-    expect(replace).toHaveBeenCalledWith("/admin/gamers/nova");
+    expect(await vi.waitFor(() => fetchMock.mock.calls[0][0])).toBe("/api/v1/admin/gamers/hazz");
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toMatchObject({ displayName: "Hassan", handle: "Hazz" });
+    await vi.waitFor(() => expect(replace).toHaveBeenCalledWith("/admin/gamers/hazz"));
   });
 });

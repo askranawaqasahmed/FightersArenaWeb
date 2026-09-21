@@ -2,66 +2,156 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Save, UserRoundX } from "lucide-react";
+import { ArrowLeft, Plus, Save, Trash2 } from "lucide-react";
 import { useState } from "react";
-import { useManagedGames } from "./managed-game-directory";
-import { persistManagedGamers, useManagedGamers, type ManagedGamer } from "./managed-gamers";
-import type { GamerAccountStatus } from "@/lib/gamer-account-access";
+import { achievementCategories, achievementCategoryLabels, type AchievementCategory } from "@/lib/achievement-labels";
 
-export function AdminGamerEditor({ slug, initialAccountStatus = null }: { slug: string; initialAccountStatus?: GamerAccountStatus | null }) {
+type Option = { id: string; name: string };
+type GameRow = { gameId: string; inGameName: string };
+type AchievementRow = { category: AchievementCategory; title: string; detail: string; gameId: string; yearLabel: string };
+
+export type AdminGamerEditorData = {
+  slug: string;
+  displayName: string;
+  handle: string;
+  bio: string | null;
+  cityId: string | null;
+  profileVisibility: "private" | "sponsors" | "public";
+  verificationStatus: "unverified" | "pending" | "verified" | "rejected";
+  rankingPoints: number;
+  games: GameRow[];
+  achievements: AchievementRow[];
+};
+
+export function AdminGamerEditor({ gamer, gameOptions, cityOptions }: {
+  gamer: AdminGamerEditorData;
+  gameOptions: Option[];
+  cityOptions: Option[];
+}) {
   const router = useRouter();
-  const gamers = useManagedGamers();
-  const original = gamers.find((item) => item.slug === slug);
-  const games = useManagedGames().filter((game) => game.active);
-  const [formOverride, setFormOverride] = useState<ManagedGamer>();
-  const databaseManagedStatus = initialAccountStatus === "suspended" ? "suspended" as const : "active" as const;
-  const form = formOverride ?? (original ? { ...original, accountStatus: initialAccountStatus === null ? original.accountStatus : databaseManagedStatus } : undefined);
+  const [displayName, setDisplayName] = useState(gamer.displayName);
+  const [handle, setHandle] = useState(gamer.handle);
+  const [bio, setBio] = useState(gamer.bio ?? "");
+  const [cityId, setCityId] = useState(gamer.cityId ?? "");
+  const [visibility, setVisibility] = useState(gamer.profileVisibility);
+  const [verification, setVerification] = useState(gamer.verificationStatus);
+  const [points, setPoints] = useState(gamer.rankingPoints);
+  const [gameRows, setGameRows] = useState<GameRow[]>(gamer.games);
+  const [achievements, setAchievements] = useState<AchievementRow[]>(gamer.achievements);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
-  if (!original || !form) return <main className="admin-content"><div className="account-empty card"><UserRoundX className="green" /><h1>Gamer not found</h1><p className="muted">This gamer cannot be edited because it does not exist.</p><Link className="button button-secondary" href="/admin/gamers">Back to gamers</Link></div></main>;
-  const currentGamer = original;
-  const currentForm = form;
-
-  function update(changes: Partial<ManagedGamer>) {
-    setFormOverride((current) => ({ ...(current ?? currentGamer), ...changes }));
-    setError("");
+  function updateAchievement(index: number, patch: Partial<AchievementRow>) {
+    setAchievements((rows) => rows.map((row, position) => (position === index ? { ...row, ...patch } : row)));
   }
 
   async function save() {
-    if (!currentForm.name.trim() || !currentForm.handle.trim() || !currentForm.city.trim() || !currentForm.phone.trim()) { setError("Name, handle, city, and phone are required."); return; }
-    const accountStatusChanged = currentForm.accountStatus !== (initialAccountStatus === null ? currentGamer.accountStatus : databaseManagedStatus);
-    if (accountStatusChanged && initialAccountStatus === null) {
-      setError("This preview profile is not connected to a database login account and cannot be blocked.");
+    if (!displayName.trim() || !handle.trim()) {
+      setError("A display name and gamer tag are required.");
       return;
     }
-    if (currentForm.accountStatus === "suspended" && accountStatusChanged && !window.confirm(`Block ${currentGamer.handle}? Every active gamer session will be signed out.`)) return;
     setSaving(true);
     setError("");
-    if (accountStatusChanged) {
-      try {
-        const response = await fetch(`/api/v1/admin/gamers/${encodeURIComponent(slug)}/status`, {
-          method: "PATCH",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ status: currentForm.accountStatus }),
-        });
-        const body = await response.json();
-        if (!response.ok) throw new Error(body.detail ?? "The gamer account status could not be changed.");
-      } catch (saveError) {
-        setError(saveError instanceof Error ? saveError.message : "The gamer account status could not be changed.");
-        setSaving(false);
-        return;
-      }
+    try {
+      const response = await fetch(`/api/v1/admin/gamers/${encodeURIComponent(gamer.slug)}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          displayName: displayName.trim(),
+          handle: handle.trim(),
+          bio: bio.trim() === "" ? null : bio.trim(),
+          cityId: cityId === "" ? null : cityId,
+          profileVisibility: visibility,
+          verificationStatus: verification,
+          rankingPoints: Number(points) || 0,
+          games: gameRows
+            .filter((row) => row.gameId && row.inGameName.trim() !== "")
+            .map((row) => ({ gameId: row.gameId, inGameName: row.inGameName.trim() })),
+          achievements: achievements
+            .filter((row) => row.title.trim() !== "")
+            .map((row) => ({
+              category: row.category,
+              title: row.title.trim(),
+              detail: row.detail.trim() === "" ? null : row.detail.trim(),
+              gameId: row.gameId === "" ? null : row.gameId,
+              yearLabel: row.yearLabel.trim() === "" ? null : row.yearLabel.trim(),
+            })),
+        }),
+      });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.errors?.[0]?.message ?? body.detail ?? "The gamer could not be saved.");
+      router.replace(`/admin/gamers/${gamer.slug}`);
+      router.refresh();
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : "The gamer could not be saved.");
+      setSaving(false);
     }
-    const saved = { ...currentForm, handle: currentForm.handle.trim().toUpperCase(), initials: currentForm.name.split(/\s+/).map((part) => part[0]).join("").slice(0, 2).toUpperCase() };
-    persistManagedGamers(gamers.map((gamer) => gamer.slug === slug ? saved : gamer));
-    router.replace(`/admin/gamers/${slug}`);
   }
 
   return <main className="admin-content admin-editor-content">
-    <Link className="text-link" href={`/admin/gamers/${slug}`}><ArrowLeft size={14} /> Gamer details</Link>
-    <div className="section-header" style={{ marginTop: 18 }}><div><h1 className="admin-heading">Edit {original.handle}</h1><p className="admin-subtitle">Update identity, competition profile, verification, and account access.</p></div><button className="button button-primary" type="button" disabled={saving} onClick={save}><Save size={15} /> {saving ? "Saving…" : "Save gamer"}</button></div>
+    <Link className="text-link" href={`/admin/gamers/${gamer.slug}`}><ArrowLeft size={14} /> Gamer details</Link>
+    <div className="section-header" style={{ marginTop: 18 }}>
+      <div><h1 className="admin-heading">Edit {gamer.handle}</h1><p className="admin-subtitle">Update identity, games, career highlights and verification.</p></div>
+      <button className="button button-primary" type="button" disabled={saving} onClick={save}><Save size={15} /> {saving ? "Saving…" : "Save gamer"}</button>
+    </div>
     {error && <p className="form-message form-error" role="alert">{error}</p>}
-    <section className="card panel entity-editor"><h2 className="panel-title">Profile identity</h2><div className="builder-grid"><label className="form-group"><span className="form-label">Full name</span><input className="input" value={form.name} onChange={(event) => update({ name: event.target.value })} /></label><label className="form-group"><span className="form-label">Gamer handle</span><input className="input" value={form.handle} onChange={(event) => update({ handle: event.target.value })} /></label><label className="form-group"><span className="form-label">Phone</span><input className="input" value={form.phone} onChange={(event) => update({ phone: event.target.value })} /></label><label className="form-group"><span className="form-label">City</span><input className="input" value={form.city} onChange={(event) => update({ city: event.target.value })} /></label><label className="form-group"><span className="form-label">Primary game</span><select className="select" value={form.game} onChange={(event) => update({ game: event.target.value })}>{games.map((game) => <option value={game.name} key={game.slug}>{game.name} · {game.genre}</option>)}</select></label><label className="form-group"><span className="form-label">Ranking points</span><input className="input" type="number" min="0" value={form.points} onChange={(event) => update({ points: Number(event.target.value) })} /></label><label className="form-group"><span className="form-label">Verification</span><select className="select" value={form.verificationStatus} onChange={(event) => update({ verificationStatus: event.target.value as ManagedGamer["verificationStatus"] })}><option value="verified">Verified</option><option value="pending">Pending</option><option value="rejected">Rejected</option></select></label><label className="form-group"><span className="form-label">Account status</span><select className="select" value={form.accountStatus} onChange={(event) => update({ accountStatus: event.target.value as ManagedGamer["accountStatus"] })}><option value="active">Active</option><option value="suspended">Suspended</option></select><span className="helper">Blocking revokes every active session. Unblocking requires the gamer to sign in again.</span></label></div><label className="form-group" style={{ marginTop: 18 }}><span className="form-label">Biography</span><textarea className="textarea" value={form.bio} onChange={(event) => update({ bio: event.target.value })} /></label></section>
+
+    <section className="card panel entity-editor">
+      <h2 className="panel-title">Profile identity</h2>
+      <div className="builder-grid">
+        <label className="form-group"><span className="form-label">Display name</span><input className="input" value={displayName} onChange={(event) => setDisplayName(event.target.value)} /></label>
+        <label className="form-group"><span className="form-label">Gamer tag</span><input className="input" value={handle} onChange={(event) => setHandle(event.target.value)} /></label>
+        <label className="form-group"><span className="form-label">City</span><select className="select" value={cityId} onChange={(event) => setCityId(event.target.value)}><option value="">Not set</option>{cityOptions.map((city) => <option key={city.id} value={city.id}>{city.name}</option>)}</select></label>
+        <label className="form-group"><span className="form-label">Ranking points</span><input className="input" type="number" min="0" value={points} onChange={(event) => setPoints(Number(event.target.value))} /></label>
+        <label className="form-group"><span className="form-label">Verification</span><select className="select" value={verification} onChange={(event) => setVerification(event.target.value as AdminGamerEditorData["verificationStatus"])}><option value="verified">Verified</option><option value="pending">Pending</option><option value="unverified">Unverified</option><option value="rejected">Rejected</option></select></label>
+        <label className="form-group"><span className="form-label">Profile visibility</span><select className="select" value={visibility} onChange={(event) => setVisibility(event.target.value as AdminGamerEditorData["profileVisibility"])}><option value="public">Public</option><option value="sponsors">Sponsors only</option><option value="private">Private</option></select></label>
+      </div>
+      <label className="form-group" style={{ marginTop: 18 }}><span className="form-label">Biography</span><textarea className="textarea" value={bio} onChange={(event) => setBio(event.target.value)} /></label>
+      <p className="helper">Blocking an account and resetting a password are on the gamer details page.</p>
+    </section>
+
+    <section className="card panel entity-editor">
+      <h2 className="panel-title">Games</h2>
+      {gameRows.map((row, index) => (
+        <div className="builder-grid" key={`game-${index}`}>
+          <label className="form-group"><span className="form-label">Game</span>
+            <select className="select" value={row.gameId} onChange={(event) => setGameRows((rows) => rows.map((item, position) => (position === index ? { ...item, gameId: event.target.value } : item)))}>
+              <option value="">Select a game</option>
+              {gameOptions.map((game) => <option key={game.id} value={game.id}>{game.name}</option>)}
+            </select>
+          </label>
+          <label className="form-group"><span className="form-label">In-game name</span>
+            <input className="input" value={row.inGameName} onChange={(event) => setGameRows((rows) => rows.map((item, position) => (position === index ? { ...item, inGameName: event.target.value } : item)))} />
+          </label>
+          <button type="button" className="button button-secondary button-small" onClick={() => setGameRows((rows) => rows.filter((_, position) => position !== index))}><Trash2 size={14} /> Remove</button>
+        </div>
+      ))}
+      <button type="button" className="button button-secondary button-small" onClick={() => setGameRows((rows) => [...rows, { gameId: "", inGameName: handle }])}><Plus size={14} /> Add a game</button>
+    </section>
+
+    <section className="card panel entity-editor">
+      <h2 className="panel-title">Career highlights</h2>
+      <p className="helper">Tournament results come from the events themselves. Everything else goes here.</p>
+      {achievements.map((row, index) => (
+        <div className="builder-grid" key={`achievement-${index}`}>
+          <label className="form-group"><span className="form-label">Type</span>
+            <select className="select" value={row.category} onChange={(event) => updateAchievement(index, { category: event.target.value as AchievementCategory })}>
+              {achievementCategories.map((category) => <option key={category} value={category}>{achievementCategoryLabels[category]}</option>)}
+            </select>
+          </label>
+          <label className="form-group"><span className="form-label">Title</span><input className="input" value={row.title} onChange={(event) => updateAchievement(index, { title: event.target.value })} /></label>
+          <label className="form-group"><span className="form-label">Detail</span><input className="input" value={row.detail} onChange={(event) => updateAchievement(index, { detail: event.target.value })} /></label>
+          <label className="form-group"><span className="form-label">Game</span>
+            <select className="select" value={row.gameId} onChange={(event) => updateAchievement(index, { gameId: event.target.value })}>
+              <option value="">Not specific</option>
+              {gameOptions.map((game) => <option key={game.id} value={game.id}>{game.name}</option>)}
+            </select>
+          </label>
+          <label className="form-group"><span className="form-label">Year</span><input className="input" value={row.yearLabel} onChange={(event) => updateAchievement(index, { yearLabel: event.target.value })} placeholder="2014–2019" /></label>
+          <button type="button" className="button button-secondary button-small" onClick={() => setAchievements((rows) => rows.filter((_, position) => position !== index))}><Trash2 size={14} /> Remove</button>
+        </div>
+      ))}
+      <button type="button" className="button button-secondary button-small" onClick={() => setAchievements((rows) => [...rows, { category: "highlight", title: "", detail: "", gameId: "", yearLabel: "" }])}><Plus size={14} /> Add a highlight</button>
+    </section>
   </main>;
 }
