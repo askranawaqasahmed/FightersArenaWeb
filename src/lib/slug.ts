@@ -8,7 +8,7 @@ export function slugify(value: string) {
 
 export const LOGIN_EMAIL_DOMAIN = "fightersarena.com";
 
-/** Default portal login address for a gamer tag, e.g. "Kashif Yagami" -> kashifyagami@fightersarena.com */
+/** Default portal login address for a gamer tag, e.g. "Hazz" -> hazz@fightersarena.com */
 export function loginEmailForHandle(handle: string) {
   const local = handle.toLowerCase().replace(/[^a-z0-9]/g, "");
   return `${local || "player"}@${LOGIN_EMAIL_DOMAIN}`;

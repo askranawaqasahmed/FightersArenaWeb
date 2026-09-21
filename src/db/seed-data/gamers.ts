@@ -73,7 +73,7 @@ export const seedGamers: SeedGamer[] = [
     profileId: seedId(322, 0),
     slug: "kashif-yagami",
     handle: "Kashif Yagami",
-    email: "kashifyagami@fightersarena.com",
+    email: "kashif@fightersarena.com",
     phone: "+923212281481",
     gameKeys: ["kof95", "kof97", "kof98um", "kof99", "kof2000", "kof2002", "kofxiii", "sf5", "fatalfury"],
     placements: [

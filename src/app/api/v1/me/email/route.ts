@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { apiData, apiProblem, invalidInput } from "@/lib/api";
+import { clearSessionCookies } from "@/lib/gamer-session";
 import { changeOwnEmail } from "@/lib/me-account";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { getRequestGamer } from "@/lib/request-auth";
@@ -27,7 +28,9 @@ export async function PATCH(request: Request) {
       }
       return apiProblem(403, "INVALID_PASSWORD", "Incorrect password", "Your current password is incorrect.");
     }
-    return apiData({ email: input.email.trim().toLowerCase() });
+    // The address is the sign-in name, so the session ends here and the
+    // player signs back in with the new one.
+    return clearSessionCookies(apiData({ email: input.email.trim().toLowerCase(), signedOut: true }));
   } catch (error) {
     if (error instanceof Error && "code" in error && (error as { code?: string }).code === "23505") {
       return apiProblem(409, "EMAIL_TAKEN", "Email already in use", "Another account already uses this email address.");

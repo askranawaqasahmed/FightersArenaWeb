@@ -119,13 +119,20 @@ export async function changeOwnEmail(
       await transaction.insert(userIdentities).values({ userId, type: "email", normalizedValue: normalized });
     }
 
+    // The email address is the sign-in name, so changing it ends every session:
+    // the player signs back in with the new address.
+    const revoked = await transaction.update(sessions)
+      .set({ revokedAt: new Date() })
+      .where(and(eq(sessions.userId, userId), isNull(sessions.revokedAt)))
+      .returning({ id: sessions.id });
+
     await transaction.insert(auditEvents).values({
       actorUserId: userId,
       action: "gamer.email_changed",
       entityType: "user",
       entityId: userId,
-      metadata: { previousEmail: existing?.value ?? null, email: normalized },
+      metadata: { previousEmail: existing?.value ?? null, email: normalized, revokedSessions: revoked.length },
     });
-    return { ok: true as const };
+    return { ok: true as const, revokedSessions: revoked.length };
   });
 }

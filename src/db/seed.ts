@@ -13,7 +13,7 @@ import {
 import { hashPassword } from "@/lib/password";
 import { referenceIds } from "./seed-data/ids";
 
-const SUPERADMIN_EMAIL = process.env.SEED_SUPERADMIN_EMAIL ?? "superadmin@ideageek.pk";
+const SUPERADMIN_EMAIL = process.env.SEED_SUPERADMIN_EMAIL ?? "superadmin@fightersarena.com";
 
 function requireSuperadminPassword(): string {
   const password = process.env.SEED_SUPERADMIN_PASSWORD;

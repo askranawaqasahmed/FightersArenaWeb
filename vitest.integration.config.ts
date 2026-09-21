@@ -9,6 +9,9 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": new URL("./src", import.meta.url).pathname,
+      // `server-only` is a Next build-time guard with no runtime module;
+      // integration tests run these libraries directly on Node.
+      "server-only": new URL("./src/test/server-only-stub.ts", import.meta.url).pathname,
     },
   },
 });

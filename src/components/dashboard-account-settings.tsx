@@ -15,7 +15,7 @@ export function DashboardAccountSettings({ email, phone, mustChangePassword }: P
 
   const [nextEmail, setNextEmail] = useState(email ?? "");
   const [emailPassword, setEmailPassword] = useState("");
-  const [emailMessage, setEmailMessage] = useState("Your email address is how you sign in.");
+  const [emailMessage, setEmailMessage] = useState("Your email address is how you sign in. Changing it signs you out.");
   const [emailError, setEmailError] = useState(false);
   const [emailLoading, setEmailLoading] = useState(false);
 
@@ -52,8 +52,9 @@ export function DashboardAccountSettings({ email, phone, mustChangePassword }: P
         return;
       }
       setEmailPassword("");
-      setEmailMessage(`Sign in with ${body.data.email} from now on.`);
-      router.refresh();
+      setEmailMessage(`Email changed to ${body.data.email}. Signing you out — sign back in with the new address.`);
+      // The session was revoked server-side; send them to the sign-in page.
+      setTimeout(() => { router.replace("/login"); router.refresh(); }, 1500);
     } finally {
       setEmailLoading(false);
     }

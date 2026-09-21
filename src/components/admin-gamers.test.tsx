@@ -18,7 +18,7 @@ const gamers: AdminGamerListItem[] = [
     city: "Karachi", game: "Fatal Fury: City of the Wolves", points: 0, verificationStatus: "verified", accountStatus: "active",
   },
   {
-    slug: "kashif-yagami", displayName: "Kashif Yagami", handle: "Kashif Yagami", email: "kashifyagami@fightersarena.com",
+    slug: "kashif-yagami", displayName: "Kashif Yagami", handle: "Kashif Yagami", email: "kashif@fightersarena.com",
     phone: "+923212281481", city: "Lahore", game: "Street Fighter V", points: 0, verificationStatus: "verified", accountStatus: "active",
   },
 ];
@@ -61,7 +61,7 @@ describe("admin gamers", () => {
 
   it("searches by the sign-in email", () => {
     render(<AdminGamerDirectory gamers={gamers} />);
-    fireEvent.change(screen.getByRole("textbox", { name: "Search gamers" }), { target: { value: "kashifyagami@" } });
+    fireEvent.change(screen.getByRole("textbox", { name: "Search gamers" }), { target: { value: "kashif@" } });
     expect(screen.getByRole("link", { name: "View Kashif Yagami" })).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "View Hazz" })).not.toBeInTheDocument();
   });
