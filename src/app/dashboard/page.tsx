@@ -14,7 +14,7 @@ import {
   standings,
   tournaments,
 } from "@/db/schema";
-import { requireGamer } from "@/lib/gamer-auth";
+import { requireGamerWithOwnPassword } from "@/lib/gamer-guard";
 import { placementLabel } from "@/lib/placement";
 import { ProfilePhotoUploader } from "@/components/profile-photo-uploader";
 
@@ -29,7 +29,7 @@ function formatDate(value: Date | null) {
 }
 
 export default async function DashboardPage() {
-  const account = await requireGamer();
+  const account = await requireGamerWithOwnPassword();
   const [profile] = await db
     .select({
       id: gamerProfiles.id,
