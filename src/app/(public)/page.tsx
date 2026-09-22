@@ -76,7 +76,7 @@ export default async function HomePage() {
       {counts.sponsors.length > 0 && (
         <div className="sponsor-strip"><div className="container sponsors"><span className="eyebrow">Trusted by</span>{counts.sponsors.map((sponsor) => <span key={sponsor}>{sponsor}</span>)}</div></div>
       )}
-      <section className="container arena-join"><div><span className="eyebrow">Your next chapter</span><h2>Don’t just watch the game.<br /><span>Become part of it.</span></h2><p>Build your player profile and find your place in the community.</p></div><Link className="button button-primary" href="/login">Join the arena <ArrowUpRight size={18} /></Link></section>
+      <section className="container arena-join"><div><span className="eyebrow">Your next chapter</span><h2>Don’t just watch the game.<br /><span>Become part of it.</span></h2><p>Build your player profile and find your place in the community.</p></div><Link className="button button-primary" href="/register">Join the arena <ArrowUpRight size={18} /></Link></section>
     </>
   );
 }
