@@ -13,6 +13,9 @@ function subscribeMotion(callback: () => void) {
 }
 function motionSnapshot() { return window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false; }
 
+/** How long each hero slide holds before advancing. */
+export const SLIDE_INTERVAL_MS = 4000;
+
 export function HomepageHero() {
   const [publishedSlides, setPublishedSlides] = useState<HomepageSlide[]>([]);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -43,7 +46,7 @@ export function HomepageHero() {
     if (slides.length < 2 || !playing) return;
     const timer = window.setInterval(() => {
       if (!document.hidden) setActiveIndex((current) => (current + 1) % slides.length);
-    }, 6500);
+    }, SLIDE_INTERVAL_MS);
     return () => window.clearInterval(timer);
   }, [slides.length, playing]);
 

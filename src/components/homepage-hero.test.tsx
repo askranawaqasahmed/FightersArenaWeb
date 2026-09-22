@@ -2,7 +2,7 @@
 import "@testing-library/jest-dom/vitest";
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { HomepageHero } from "./homepage-hero";
+import { HomepageHero, SLIDE_INTERVAL_MS } from "./homepage-hero";
 
 beforeEach(() => {
   vi.useFakeTimers();
@@ -28,23 +28,23 @@ describe("Arena slider", () => {
   });
   it("autoplays but stops while paused or hovered", async () => {
     await mount();
-    act(() => vi.advanceTimersByTime(6500));
+    act(() => vi.advanceTimersByTime(SLIDE_INTERVAL_MS));
     expect(title()).toHaveTextContent("A new generation.");
     fireEvent.click(screen.getByRole("button", { name: "Pause slideshow" }));
-    act(() => vi.advanceTimersByTime(13000));
+    act(() => vi.advanceTimersByTime(SLIDE_INTERVAL_MS * 2));
     expect(title()).toHaveTextContent("A new generation.");
     fireEvent.click(screen.getByRole("button", { name: "Play slideshow" }));
     fireEvent.mouseEnter(screen.getByRole("region", { name: "Arena highlights" }));
-    act(() => vi.advanceTimersByTime(6500));
+    act(() => vi.advanceTimersByTime(SLIDE_INTERVAL_MS));
     expect(title()).toHaveTextContent("A new generation.");
     fireEvent.mouseLeave(screen.getByRole("region", { name: "Arena highlights" }));
-    act(() => vi.advanceTimersByTime(6500));
+    act(() => vi.advanceTimersByTime(SLIDE_INTERVAL_MS));
     expect(title()).toHaveTextContent("Every rivalry");
   });
   it("respects reduced motion and supports swipe navigation", async () => {
     vi.mocked(window.matchMedia).mockReturnValue({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() } as unknown as MediaQueryList);
     await mount();
-    act(() => vi.advanceTimersByTime(13000));
+    act(() => vi.advanceTimersByTime(SLIDE_INTERVAL_MS * 2));
     expect(title()).toHaveTextContent("Great players.");
     expect(screen.queryByRole("button", { name: "Pause slideshow" })).not.toBeInTheDocument();
     const carousel = screen.getByRole("region", { name: "Arena highlights" });

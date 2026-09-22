@@ -129,9 +129,10 @@ export const seedGamers: SeedGamer[] = [
     profileId: seedId(323, 0),
     slug: "babarzaki",
     handle: "Babarzaki",
-    displayName: "Babar",
+    displayName: "Syed Babar Ali",
     email: "babar@fightersarena.com",
     bio: "Competitive esports player. Fatal Fury: City of the Wolves competitor on Pakistan's national circuit, with podium finishes across the 2025 and 2026 seasons.",
+    profilePdfUrl: "/profiles/babarzaki.pdf",
     phone: "+923000000003",
     gameKeys: ["fatalfury"],
     placements: [
