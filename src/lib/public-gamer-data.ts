@@ -128,17 +128,63 @@ async function primaryGames(gamerIds: string[], executor: DbExecutor) {
   return map;
 }
 
+/** Titles and podium finishes per gamer, read from the historical placement snapshots. */
+async function careerRecords(gamerIds: string[], executor: DbExecutor) {
+  const record = new Map<string, { titles: number; podiums: number }>();
+  if (gamerIds.length === 0) return record;
+  const rows = await executor
+    .select({ gamerId: tournamentParticipantSnapshots.participantId, finalRank: tournamentParticipantSnapshots.finalRank })
+    .from(tournamentParticipantSnapshots)
+    .where(and(
+      inArray(tournamentParticipantSnapshots.participantId, gamerIds),
+      eq(tournamentParticipantSnapshots.participantType, "gamer"),
+    ));
+  for (const row of rows) {
+    const entry = record.get(row.gamerId) ?? { titles: 0, podiums: 0 };
+    if (isTitle(row.finalRank)) entry.titles += 1;
+    if (isPodium(row.finalRank)) entry.podiums += 1;
+    record.set(row.gamerId, entry);
+  }
+  return record;
+}
+
+export type CareerRecord = { titles: number; podiums: number };
+
+const NO_RECORD: CareerRecord = { titles: 0, podiums: 0 };
+
+/**
+ * Ladder order. Operator-awarded ranking points lead; while those are level (they are
+ * zero for everyone until an operator awards any) titles then podiums decide it, so a
+ * newcomer never outranks a decorated player on alphabetical order alone.
+ */
+export function compareLadder(
+  left: { rankingPoints: number; displayName: string; record?: CareerRecord },
+  right: { rankingPoints: number; displayName: string; record?: CareerRecord },
+): number {
+  if (left.rankingPoints !== right.rankingPoints) return right.rankingPoints - left.rankingPoints;
+  const leftRecord = left.record ?? NO_RECORD;
+  const rightRecord = right.record ?? NO_RECORD;
+  if (leftRecord.titles !== rightRecord.titles) return rightRecord.titles - leftRecord.titles;
+  if (leftRecord.podiums !== rightRecord.podiums) return rightRecord.podiums - leftRecord.podiums;
+  return left.displayName.localeCompare(right.displayName);
+}
+
 export async function getPublicGamers(executor: DbExecutor = db): Promise<PublicGamerSummary[]> {
   const rows = await executor
     .select(baseSelection)
     .from(gamerProfiles)
     .leftJoin(cities, eq(cities.id, gamerProfiles.cityId))
     .leftJoin(countries, eq(countries.id, gamerProfiles.countryId))
-    .where(eq(gamerProfiles.profileVisibility, publicVisibility))
-    .orderBy(desc(gamerProfiles.rankingPoints), asc(gamerProfiles.displayName));
+    .where(eq(gamerProfiles.profileVisibility, publicVisibility));
 
-  const gameByGamer = await primaryGames(rows.map((row) => row.id), executor);
-  return rows.map((row, index) => ({
+  const recordByGamer = await careerRecords(rows.map((row) => row.id), executor);
+  const ranked = [...rows].sort((left, right) => compareLadder(
+    { ...left, record: recordByGamer.get(left.id) },
+    { ...right, record: recordByGamer.get(right.id) },
+  ));
+
+  const gameByGamer = await primaryGames(ranked.map((row) => row.id), executor);
+  return ranked.map((row, index) => ({
     slug: row.slug,
     handle: row.handle,
     name: row.displayName,

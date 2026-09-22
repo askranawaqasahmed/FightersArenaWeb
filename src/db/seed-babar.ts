@@ -1,111 +1,68 @@
-import { and, eq, or } from "drizzle-orm";
+/**
+ * Adds Babarzaki and backfills the profile copy for players seeded before
+ * `bio`/`avatarUrl`/`displayName` were part of the go-live seed.
+ *
+ * `seed-content.ts` is guarded by a one-time audit marker and has already run in
+ * production, so it can no longer introduce a new player. This script is the
+ * additive follow-up: it is idempotent, it never overwrites a field an operator
+ * has since edited in the portal, and it can be re-run safely.
+ */
+import { eq, or, and, isNull } from "drizzle-orm";
 import { db, sqlClient } from "./client";
 import {
-  auditEvents,
-  divisions,
   gamerAchievements,
   gamerCredentials,
   gamerGames,
   gamerProfiles,
-  games,
   roles,
-  sponsors,
-  sponsorships,
   tournamentParticipantSnapshots,
-  tournaments,
   userIdentities,
   userRoles,
   users,
 } from "./schema";
 import { hashPassword } from "@/lib/password";
-import { GO_LIVE_SEED_ACTION, referenceIds, seedId } from "./seed-data/ids";
-import { gameIdByKey, seedGames } from "./seed-data/games";
-import { datePrecisionFor, seedTournaments, startsAtFor, tournamentByKey } from "./seed-data/tournaments";
-import { seedGamers, seedSponsor } from "./seed-data/gamers";
+import { referenceIds, seedId } from "./seed-data/ids";
+import { gameIdByKey } from "./seed-data/games";
+import { startsAtFor, tournamentByKey } from "./seed-data/tournaments";
+import { seedGamers } from "./seed-data/gamers";
 
 const GAMER_PASSWORD = process.env.SEED_GAMER_PASSWORD ?? "123456";
 
-async function alreadySeeded() {
-  const [marker] = await db.select({ id: auditEvents.id }).from(auditEvents)
-    .where(eq(auditEvents.action, GO_LIVE_SEED_ACTION)).limit(1);
-  return Boolean(marker);
-}
-
-async function seedContent() {
-  if (await alreadySeeded()) {
-    console.log("Go-live content already seeded; skipping. Manage records from the admin portal.");
-    return;
-  }
-
-  // 1. Tournaments (each named event once, shared events included).
-  await db.insert(tournaments).values(seedTournaments.map((tournament) => ({
-    id: tournament.id,
-    slug: tournament.slug,
-    name: tournament.name,
-    competitionType: tournament.competitionType,
-    description: tournament.description ?? null,
-    status: "completed" as const,
-    countryId: referenceIds.pakistan,
-    startsAt: startsAtFor(tournament),
-    endsAt: startsAtFor(tournament),
-    completedAt: startsAtFor(tournament),
-    online: tournament.online ?? true,
-    featured: false,
-    hasBracket: false,
-    datePrecision: datePrecisionFor(tournament),
-  }))).onConflictDoNothing();
-
-  // 2. Games.
-  await db.insert(games).values(seedGames.map((game) => ({
-    id: game.id,
-    slug: game.slug,
-    name: game.name,
-    genre: "Fighting",
-    publisher: game.publisher,
-    teamSize: 1,
-    coverGradient: game.coverGradient,
-  }))).onConflictDoNothing();
-
-  // 3. One division per tournament. No stages/matches: these are historical results.
-  await db.insert(divisions).values(seedTournaments.map((tournament) => ({
-    id: tournament.divisionId,
-    tournamentId: tournament.id,
-    gameId: gameIdByKey[tournament.gameKey],
-    name: tournament.competitionType === "league" ? "League" : "Main bracket",
-    competitionType: tournament.competitionType,
-    status: "completed" as const,
-    participantType: "gamer" as const,
-    maxParticipants: 2,
-    rosterMin: 1,
-    rosterMax: 1,
-  }))).onConflictDoNothing();
-
-  await db.insert(sponsors).values({
-    id: seedSponsor.id,
-    slug: seedSponsor.slug,
-    name: seedSponsor.name,
-    category: seedSponsor.category,
-  }).onConflictDoNothing();
-
+async function run() {
   const [gamerRole] = await db.select({ id: roles.id }).from(roles).where(eq(roles.key, "gamer")).limit(1);
   if (!gamerRole) throw new Error("gamer role missing. Run `npm run db:seed` first.");
   const passwordHash = await hashPassword(GAMER_PASSWORD);
 
-  // 4. Gamers, their placements and their career highlights.
   for (const [gamerIndex, gamer] of seedGamers.entries()) {
-    // Snapshot and achievement ids are namespaced per gamer, so adding a player never
-    // reuses an id already issued to an earlier one.
     const idLane = gamerIndex + 1;
-    // Never overwrite a player who already exists: they may have changed email/password/bio.
     const [existing] = await db.select({ id: gamerProfiles.id }).from(gamerProfiles)
       .where(eq(gamerProfiles.slug, gamer.slug)).limit(1);
+
+    if (existing) {
+      // Only fill blanks. A bio or avatar set from the portal is the operator's and stays.
+      if (gamer.bio) {
+        await db.update(gamerProfiles).set({ bio: gamer.bio })
+          .where(and(eq(gamerProfiles.id, existing.id), or(isNull(gamerProfiles.bio), eq(gamerProfiles.bio, ""))));
+      }
+      if (gamer.avatarUrl) {
+        await db.update(gamerProfiles).set({ avatarUrl: gamer.avatarUrl })
+          .where(and(eq(gamerProfiles.id, existing.id), isNull(gamerProfiles.avatarUrl)));
+      }
+      if (gamer.displayName) {
+        await db.update(gamerProfiles).set({ displayName: gamer.displayName })
+          .where(and(eq(gamerProfiles.id, existing.id), eq(gamerProfiles.displayName, gamer.handle)));
+      }
+      console.log(`Updated profile copy for ${gamer.handle}.`);
+      continue;
+    }
+
     const [identityTaken] = await db.select({ userId: userIdentities.userId }).from(userIdentities)
       .where(or(
         and(eq(userIdentities.type, "email"), eq(userIdentities.normalizedValue, gamer.email)),
         and(eq(userIdentities.type, "phone"), eq(userIdentities.normalizedValue, gamer.phone)),
       )).limit(1);
-    if (existing || identityTaken) {
-      console.log(`Skipping ${gamer.handle}: an account already exists.`);
+    if (identityTaken) {
+      console.log(`Skipping ${gamer.handle}: that email or phone already belongs to an account.`);
       continue;
     }
 
@@ -151,9 +108,7 @@ async function seedContent() {
         placementLabel: placement.placementLabel ?? null,
         profileSnapshot: { source: "historical-import" },
         rosterSnapshot: (placement.teammates ?? []).map((name) => ({ displayName: name })),
-        sponsorSnapshot: placement.tournamentKey === "arcadecafe-2014"
-          ? [{ name: seedSponsor.name, slug: seedSponsor.slug, category: seedSponsor.category }]
-          : [],
+        sponsorSnapshot: [],
         capturedAt: startsAtFor(tournament) ?? new Date(),
       };
     })).onConflictDoNothing();
@@ -170,32 +125,11 @@ async function seedContent() {
       verified: true,
     }))).onConflictDoNothing();
 
-    if (gamer.key === "kashif") {
-      await db.insert(sponsorships).values({
-        id: seedId(602, 0),
-        sponsorId: seedSponsor.id,
-        subjectType: "gamer",
-        subjectId: gamer.profileId,
-        status: "ended",
-        public: true,
-      }).onConflictDoNothing();
-    }
-
     console.log(`Seeded ${gamer.handle} (${gamer.email}).`);
   }
-
-  await db.insert(auditEvents).values({
-    action: GO_LIVE_SEED_ACTION,
-    entityType: "platform",
-    metadata: {
-      tournaments: seedTournaments.length,
-      games: seedGames.length,
-      gamers: seedGamers.map((gamer) => gamer.slug),
-    },
-  });
 }
 
-seedContent()
-  .then(() => console.log("Go-live content seeded."))
+run()
+  .then(() => console.log("Player sync complete."))
   .catch((error) => { console.error(error); process.exitCode = 1; })
   .finally(() => sqlClient.end());

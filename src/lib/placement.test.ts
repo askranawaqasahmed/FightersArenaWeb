@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isPodium, isTitle, placementLabel } from "@/lib/placement";
+import { isPodium, isTitle, placementBadge, placementLabel, placementMedalClass } from "@/lib/placement";
 
 describe("placementLabel", () => {
   it("calls a win Champion, never Winner or an ordinal", () => {
@@ -40,5 +40,32 @@ describe("isTitle / isPodium", () => {
     expect([1, 2, 3].every(isPodium)).toBe(true);
     expect(isPodium(4)).toBe(false);
     expect(isPodium(null)).toBe(false);
+  });
+});
+
+describe("placementMedalClass", () => {
+  it("gives each podium place its own medal colour", () => {
+    expect(placementMedalClass(1)).toBe("placement-1");
+    expect(placementMedalClass(2)).toBe("placement-2");
+    expect(placementMedalClass(3)).toBe("placement-3");
+  });
+
+  it("shares one neutral badge off the podium", () => {
+    expect(placementMedalClass(4)).toBe("placement-rest");
+    expect(placementMedalClass(9)).toBe("placement-rest");
+    expect(placementMedalClass(null)).toBe("placement-rest");
+  });
+});
+
+describe("placementBadge", () => {
+  it("shows the bare position for a ranked finish", () => {
+    expect(placementBadge(1)).toBe("1");
+    expect(placementBadge(9)).toBe("9");
+  });
+
+  it("shows a dash when the position is unknown", () => {
+    expect(placementBadge(null)).toBe("–");
+    expect(placementBadge(undefined)).toBe("–");
+    expect(placementBadge(0)).toBe("–");
   });
 });

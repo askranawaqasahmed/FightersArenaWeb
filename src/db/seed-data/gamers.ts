@@ -25,8 +25,14 @@ export type SeedGamer = {
   profileId: string;
   slug: string;
   handle: string;
+  /** Legal/display name when it differs from the competitive handle. */
+  displayName?: string;
   email: string;
   phone: string;
+  /** Short public intro shown under the name on the profile and in the PDF. */
+  bio?: string;
+  /** Static portrait under public/. Operator uploads overwrite this later. */
+  avatarUrl?: string;
   gameKeys: string[];
   placements: SeedPlacement[];
   achievements: SeedAchievement[];
@@ -39,7 +45,10 @@ export const seedGamers: SeedGamer[] = [
     profileId: seedId(321, 0),
     slug: "hazz",
     handle: "Hazz",
+    displayName: "Hassan Baig",
     email: "hazz@fightersarena.com",
+    bio: "Competitive esports player. Fatal Fury: City of the Wolves specialist with a decade in Pakistan's fighting game scene, previously undefeated across his King of Fighters 2002 run.",
+    avatarUrl: "/images/gamers/hazz.jpg",
     phone: "+923431263350",
     gameKeys: ["kof2002", "kofxv", "sf6", "fatalfury"],
     placements: [
@@ -106,6 +115,34 @@ export const seedGamers: SeedGamer[] = [
       { category: "player_developed", title: "KamranBilly", detail: "Dubai tournament, 3rd position." },
       { category: "player_developed", title: "HammadKhan", detail: "Dubai tournament, 3rd position." },
       { category: "player_developed", title: "Farhan", detail: "KOF99 KPL 1.0 Champion; Cyberfanatics KOF98 Runner-up." },
+    ],
+  },
+  {
+    key: "babar",
+    userId: seedId(313, 0),
+    profileId: seedId(323, 0),
+    slug: "babarzaki",
+    handle: "Babarzaki",
+    displayName: "Babar",
+    email: "babar@fightersarena.com",
+    bio: "Competitive esports player. Fatal Fury: City of the Wolves competitor on Pakistan's national circuit, with podium finishes across the 2025 and 2026 seasons.",
+    phone: "+923000000003",
+    gameKeys: ["fatalfury"],
+    placements: [
+      { tournamentKey: "takedown-2025", finalRank: 2 },
+      { tournamentKey: "takedown-2026", finalRank: 9 },
+      { tournamentKey: "snk-league-2025", finalRank: 3 },
+      { tournamentKey: "road-to-takedown-2026", finalRank: 2 },
+      { tournamentKey: "o2-karachi-showdown-2026", finalRank: 2 },
+      { tournamentKey: "fighters-arena-showdown-2026", finalRank: 3 },
+      { tournamentKey: "swc-qualifier-2026", finalRank: 9 },
+      { tournamentKey: "saudi-evo-france-2026", finalRank: 7 },
+      { tournamentKey: "esports-nations-cup-qualifier-2026", finalRank: 7 },
+    ],
+    achievements: [
+      { category: "milestone", title: "Podium finish in six consecutive seasons events", detail: "Runner-up or better at four events across the 2025 and 2026 Fatal Fury seasons.", gameKey: "fatalfury", yearLabel: "2025–2026" },
+      { category: "highlight", title: "4× tournament runner-up", detail: "Second place at Takedown 2025, Road to Takedown 2026 and O2 Esports Karachi Showdown 2026.", gameKey: "fatalfury", yearLabel: "2025–2026" },
+      { category: "highlight", title: "International qualifier campaigns", detail: "Top 7 at both the Saudi Esports League: Road to EVO France 2026 and the Esports Nations Cup Qualifier 2026.", gameKey: "fatalfury", yearLabel: "2026" },
     ],
   },
 ];

@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Award, BadgeCheck, CalendarDays, Download, Gamepad2, GraduationCap, MapPin, ShieldCheck, Trophy, Users } from "lucide-react";
+import { Award, BadgeCheck, CalendarDays, Download, Gamepad2, GraduationCap, MapPin, ShieldCheck, Swords, Trophy, Users } from "lucide-react";
 import { getPublicGamer, type PublicGamerAchievement } from "@/lib/public-gamer-data";
-import { isTitle, placementLabel } from "@/lib/placement";
+import { isTitle, placementBadge, placementLabel, placementMedalClass } from "@/lib/placement";
 import { publicStatusLabel } from "@/lib/public-tournament-data";
 
 export const dynamic = "force-dynamic";
@@ -49,7 +49,11 @@ export default async function GamerProfilePage({ params }: { params: Promise<{ s
             ? <img className="avatar avatar-image" src={gamer.avatarUrl} alt={gamer.name} />
             : <div className="avatar">{gamer.initials}</div>}
           <div>
-            <div className="eyebrow">National rank #{gamer.rank}</div>
+            {/* Ranking points are set by an operator. Until someone has been given any,
+                every profile ties on zero and a "rank" would just be alphabetical noise. */}
+            {gamer.points > 0
+              ? <div className="eyebrow">National rank #{gamer.rank}</div>
+              : <div className="eyebrow">{gamer.game ?? "Competitor"}</div>}
             <h1 style={{ margin: "7px 0", fontSize: 38 }}>
               {gamer.handle} {gamer.verified && <BadgeCheck className="verified" size={23} />}
             </h1>
@@ -58,6 +62,7 @@ export default async function GamerProfilePage({ params }: { params: Promise<{ s
               {location && <> · <MapPin size={13} /> {location}</>}
               {gamer.game && <> · {gamer.game}</>}
             </div>
+            <div className="profile-role"><Swords size={12} /> Competitive esports player</div>
             {gamer.bio && <p className="player-bio">{gamer.bio}</p>}
           </div>
           {/* A plain anchor, not a Link: the router would try to fetch this as a page. */}
@@ -137,9 +142,14 @@ export default async function GamerProfilePage({ params }: { params: Promise<{ s
                       <Link href={`/tournaments/${entry.tournamentSlug}`}><strong>{entry.tournamentName}</strong></Link>
                       <div className="muted">{[entry.gameName, entry.year ? String(entry.year) : null].filter(Boolean).join(" · ")}</div>
                     </div>
-                    <strong className={isTitle(entry.finalRank) ? "green" : undefined}>
-                      {placementLabel(entry.finalRank, entry.placementLabel)}
-                    </strong>
+                    <div className="achievement-result">
+                      <span className={`placement-medal ${placementMedalClass(entry.finalRank)}`}>
+                        {placementBadge(entry.finalRank)}
+                      </span>
+                      <strong className={isTitle(entry.finalRank) ? "green" : undefined}>
+                        {placementLabel(entry.finalRank, entry.placementLabel)}
+                      </strong>
+                    </div>
                   </div>
                 ))}
               </>
@@ -156,7 +166,7 @@ export default async function GamerProfilePage({ params }: { params: Promise<{ s
                         <div className="muted">{[entry.detail, entry.gameName].filter(Boolean).join(" · ")}</div>
                       )}
                     </div>
-                    {entry.yearLabel && <strong>{entry.yearLabel}</strong>}
+                    {entry.yearLabel && <span className="achievement-year">{entry.yearLabel}</span>}
                   </div>
                 ))}
               </div>

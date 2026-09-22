@@ -56,6 +56,38 @@
 .public-site .docs-sidebar { background: var(--surface-1); }
 .public-site .method { color: white; background: #7443bd; }
 
+/* Player profile: the portrait leads, then the career record reads as ranked sections. */
+.public-site .profile-hero { gap: 32px; padding: 38px; background: linear-gradient(120deg, #221830, #191322 62%); border-color: #3a2f4c; }
+.public-site .profile-hero .avatar { width: 132px; height: 132px; border-width: 2px; border-color: #8b4ff4; box-shadow: 0 16px 44px rgba(139,79,244,.26); }
+.public-site .profile-hero .avatar-image { object-position: top center; }
+.public-site .player-bio { max-width: 640px; color: var(--text-secondary); font-size: 14px; }
+.profile-role { display: inline-flex; align-items: center; gap: 7px; margin-top: 13px; padding: 5px 12px; border: 1px solid #5b3f85; border-radius: 999px; background: rgba(139,79,244,.13); color: #cbb2ff; font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+.public-site .performance-card { background: linear-gradient(135deg, #1f1830, #1a1526); border-color: #342a46; }
+.public-site .performance-card strong { color: #f0e9ff; }
+.public-site .panel-title { display: flex; align-items: center; gap: 9px; padding-bottom: 13px; border-bottom: 2px solid #3d2f56; color: #efe8ff; font-size: 15px; letter-spacing: .01em; }
+.public-site .panel-title svg { color: #a274ff; }
+
+/* One medal-coloured rail per result, so podium finishes are scannable at a glance. */
+.public-site .achievement { position: relative; align-items: center; padding: 14px 15px 14px 17px; border-top: 1px solid #2c2438; border-radius: 10px; }
+.public-site .achievement:hover { background: rgba(139,79,244,.07); }
+.public-site .achievement::before { content: ""; position: absolute; left: 0; top: 50%; width: 3px; height: 0; border-radius: 3px; background: #5d4d78; transform: translateY(-50%); transition: height .18s ease; }
+.public-site .achievement:hover::before { height: 62%; }
+.public-site .achievement strong.green { color: #c9a4ff; }
+.placement-medal { display: inline-grid; place-items: center; width: 27px; height: 27px; border-radius: 50%; font-size: 11px; font-weight: 900; font-variant-numeric: tabular-nums; }
+.placement-1 { color: #2a1d00; background: linear-gradient(140deg, #ffd977, #e0a416); }
+.placement-2 { color: #1f2024; background: linear-gradient(140deg, #e6e9f0, #a9b0c0); }
+.placement-3 { color: #2b1605; background: linear-gradient(140deg, #eaa877, #bf7132); }
+.placement-rest { border: 1px solid #453758; color: var(--text-muted); background: #241d33; }
+.achievement-result { display: flex; align-items: center; gap: 11px; white-space: nowrap; }
+.achievement-year { color: var(--text-muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+
+@media (max-width: 720px) {
+  .public-site .profile-hero { padding: 26px; }
+  .public-site .profile-hero .avatar { width: 104px; height: 104px; }
+  .public-site .achievement { flex-direction: column; align-items: flex-start; gap: 9px; }
+  .achievement-result { width: 100%; }
+}
+
 .arena-hero { position: relative; overflow: hidden; min-height: 650px; isolation: isolate; background: #15101f; touch-action: pan-y; }
 .arena-hero-art { position: absolute; inset: 0 0 0 22%; background-size: cover; background-position: center; opacity: .88; z-index: -3; animation: arena-reveal .7s ease both; }
 .arena-hero::before { content: ""; position: absolute; inset: 0; z-index: -2; background: linear-gradient(90deg, #15101f 3%, #15101ff5 24%, #15101fcc 44%, #15101f33 75%), linear-gradient(0deg, #15101f 0%, transparent 40%, #15101f22); }
