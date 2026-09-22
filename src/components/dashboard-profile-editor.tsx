@@ -8,7 +8,7 @@ import { achievementCategories, achievementCategoryLabels, type AchievementCateg
 type GameOption = { id: string; name: string };
 type CityOption = { id: string; name: string };
 
-type GameEntry = { gameId: string; inGameName: string; primaryRole: string | null; platform: string | null };
+type GameEntry = { gameId: string; game: string };
 
 type Achievement = {
   id: string;
@@ -44,7 +44,6 @@ export function DashboardProfileEditor({ profile, games, achievements, gameOptio
   const [bio, setBio] = useState(profile.bio ?? "");
   const [cityId, setCityId] = useState(profile.cityId ?? "");
   const [visibility, setVisibility] = useState(profile.profileVisibility);
-  const [gameRows, setGameRows] = useState<GameEntry[]>(games);
   const [message, setMessage] = useState("Changes appear on your public profile straight away.");
   const [error, setError] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -53,10 +52,6 @@ export function DashboardProfileEditor({ profile, games, achievements, gameOptio
   const [achievementMessage, setAchievementMessage] = useState("Add anything that is not a tournament result.");
   const [achievementError, setAchievementError] = useState(false);
   const [achievementSaving, setAchievementSaving] = useState(false);
-
-  function updateGameRow(index: number, patch: Partial<GameEntry>) {
-    setGameRows((rows) => rows.map((row, position) => (position === index ? { ...row, ...patch } : row)));
-  }
 
   async function saveProfile(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -72,14 +67,6 @@ export function DashboardProfileEditor({ profile, games, achievements, gameOptio
           bio: bio.trim() === "" ? null : bio.trim(),
           cityId: cityId === "" ? null : cityId,
           profileVisibility: visibility,
-          games: gameRows
-            .filter((row) => row.gameId && row.inGameName.trim() !== "")
-            .map((row) => ({
-              gameId: row.gameId,
-              inGameName: row.inGameName.trim(),
-              primaryRole: row.primaryRole?.trim() || null,
-              platform: row.platform?.trim() || null,
-            })),
         }),
       });
       const body = await response.json();
@@ -170,27 +157,10 @@ export function DashboardProfileEditor({ profile, games, achievements, gameOptio
           </label>
 
           <h3 className="panel-title" style={{ marginTop: 18 }}>Games</h3>
-          {gameRows.map((row, index) => (
-            <div className="builder-grid" key={`${row.gameId}-${index}`}>
-              <label className="form-group">
-                <span className="form-label">Game</span>
-                <select className="select" value={row.gameId} onChange={(event) => updateGameRow(index, { gameId: event.target.value })}>
-                  <option value="">Select a game</option>
-                  {gameOptions.map((game) => <option key={game.id} value={game.id}>{game.name}</option>)}
-                </select>
-              </label>
-              <label className="form-group">
-                <span className="form-label">In-game name</span>
-                <input className="input" value={row.inGameName} onChange={(event) => updateGameRow(index, { inGameName: event.target.value })} maxLength={100} />
-              </label>
-              <button type="button" className="button button-secondary button-small" onClick={() => setGameRows((rows) => rows.filter((_, position) => position !== index))}>
-                <Trash2 size={14} /> Remove
-              </button>
-            </div>
-          ))}
-          <button type="button" className="button button-secondary button-small" onClick={() => setGameRows((rows) => [...rows, { gameId: "", inGameName: handle, primaryRole: null, platform: null }])}>
-            <Plus size={14} /> Add a game
-          </button>
+          <p className="muted">Your games come from the tournaments you have played and the games on your career highlights.</p>
+          {games.length > 0
+            ? <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>{games.map((entry) => <span className="filter-chip static" key={entry.gameId}>{entry.game}</span>)}</div>
+            : <p className="muted">No games yet. Play a tournament or add a career highlight with a game.</p>}
 
           <button className="button button-primary" disabled={saving}><Save size={16} /> {saving ? "Saving…" : "Save profile"}</button>
           <p className={`helper${error ? " form-error" : ""}`} role="status">{message}</p>

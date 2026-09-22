@@ -1,8 +1,9 @@
 import "server-only";
 
-import { asc, count, eq } from "drizzle-orm";
+import { asc, countDistinct, eq } from "drizzle-orm";
 import { db } from "@/db/client";
-import { gamerGames, games } from "@/db/schema";
+import { games } from "@/db/schema";
+import { playedGames } from "@/lib/played-games";
 
 export type PublicGame = {
   id: string;
@@ -17,8 +18,9 @@ export type PublicGame = {
 };
 
 async function playerCounts() {
-  const rows = await db.select({ gameId: gamerGames.gameId, value: count() })
-    .from(gamerGames).groupBy(gamerGames.gameId);
+  const played = playedGames();
+  const rows = await db.select({ gameId: played.gameId, value: countDistinct(played.gamerId) })
+    .from(played).groupBy(played.gameId);
   return new Map(rows.map((row) => [row.gameId, Number(row.value)]));
 }
 

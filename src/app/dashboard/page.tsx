@@ -6,7 +6,6 @@ import {
   cities,
   countries,
   divisions,
-  gamerGames,
   gamerProfiles,
   games,
   registrations,
@@ -15,6 +14,7 @@ import {
   tournaments,
 } from "@/db/schema";
 import { requireGamerWithOwnPassword } from "@/lib/gamer-guard";
+import { playedGamesByGamer } from "@/lib/played-games";
 import { placementLabel } from "@/lib/placement";
 import { ProfilePhotoUploader } from "@/components/profile-photo-uploader";
 
@@ -42,14 +42,10 @@ export default async function DashboardPage() {
       createdAt: gamerProfiles.createdAt,
       city: cities.name,
       country: countries.name,
-      game: games.name,
-      inGameName: gamerGames.inGameName,
     })
     .from(gamerProfiles)
     .leftJoin(cities, eq(cities.id, gamerProfiles.cityId))
     .leftJoin(countries, eq(countries.id, gamerProfiles.countryId))
-    .leftJoin(gamerGames, eq(gamerGames.gamerId, gamerProfiles.id))
-    .leftJoin(games, eq(games.id, gamerGames.gameId))
     .where(eq(gamerProfiles.userId, account.userId))
     .limit(1);
 
@@ -68,6 +64,8 @@ export default async function DashboardPage() {
       </main>
     );
   }
+
+  const playedGames = (await playedGamesByGamer([profile.id])).get(profile.id) ?? [];
 
   const rows = await db
     .select({
@@ -136,13 +134,13 @@ export default async function DashboardPage() {
             {profile.verificationStatus === "verified" && <BadgeCheck className="verified" size={22} />}
           </h1>
           <p className="muted">
-            {profile.displayName} · <MapPin size={13} /> {[profile.city, profile.country].filter(Boolean).join(", ")} · {profile.game ?? "Game not assigned"}
+            {profile.displayName} · <MapPin size={13} /> {[profile.city, profile.country].filter(Boolean).join(", ")} · {playedGames.map((entry) => entry.game).join(", ") || "No games played yet"}
           </p>
           <p className="player-bio">{profile.bio ?? "No player bio has been added yet."}</p>
         </div>
         <div className="player-identity">
           <span>Player since</span><strong>{profile.createdAt.getFullYear()}</strong>
-          <span>In-game ID</span><strong>{profile.inGameName ?? profile.handle}</strong>
+          <span>In-game ID</span><strong>{profile.handle}</strong>
           <span>{account.email ? "Email" : "Mobile"}</span><strong>{account.email ?? account.phone ?? "—"}</strong>
         </div>
       </section>

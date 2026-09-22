@@ -38,7 +38,7 @@ const detail: AdminGamerDetailData = {
 const editable: AdminGamerEditorData = {
   slug: "hazz", displayName: "Hazz", handle: "Hazz", bio: null, cityId: null,
   profileVisibility: "public", verificationStatus: "verified", rankingPoints: 0,
-  games: [{ gameId: "game-1", inGameName: "Hazz" }],
+  games: [{ gameId: "game-1", game: "Fatal Fury: City of the Wolves" }],
   achievements: [],
 };
 

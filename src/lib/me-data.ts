@@ -1,10 +1,9 @@
-import { and, asc, desc, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { db } from "@/db/client";
 import {
   cities,
   countries,
   divisions,
-  gamerGames,
   gamerProfiles,
   games,
   registrations,
@@ -12,14 +11,8 @@ import {
   userIdentities,
 } from "@/db/schema";
 import { LifecycleError } from "@/domain/tournament-lifecycle";
+import { playedGamesByGamer } from "@/lib/played-games";
 import { uniqueProfileSlug } from "@/lib/slug";
-
-export type OwnGameEntry = {
-  gameId: string;
-  inGameName: string;
-  primaryRole?: string | null;
-  platform?: string | null;
-};
 
 export type OwnProfilePatch = {
   displayName?: string;
@@ -28,7 +21,6 @@ export type OwnProfilePatch = {
   countryId?: string | null;
   cityId?: string | null;
   profileVisibility?: "private" | "sponsors" | "public";
-  games?: OwnGameEntry[];
 };
 
 export async function getOwnProfile(userId: string) {
@@ -60,20 +52,9 @@ export async function getOwnProfile(userId: string) {
     .select({ type: userIdentities.type, value: userIdentities.normalizedValue, verifiedAt: userIdentities.verifiedAt })
     .from(userIdentities)
     .where(eq(userIdentities.userId, userId));
-  const gameRows = await db
-    .select({
-      gameId: gamerGames.gameId,
-      game: games.name,
-      gameSlug: games.slug,
-      inGameName: gamerGames.inGameName,
-      primaryRole: gamerGames.primaryRole,
-      platform: gamerGames.platform,
-      verified: gamerGames.verified,
-    })
-    .from(gamerGames)
-    .innerJoin(games, eq(games.id, gamerGames.gameId))
-    .where(eq(gamerGames.gamerId, profile.id))
-    .orderBy(asc(games.name));
+  // Games come from tournaments played and career highlights; the handle is the in-game name.
+  const played = (await playedGamesByGamer([profile.id])).get(profile.id) ?? [];
+  const gameRows = played.map((entry) => ({ ...entry, inGameName: profile.handle, primaryRole: null, platform: null }));
 
   return {
     ...profile,
@@ -130,23 +111,6 @@ export async function upsertOwnProfile(userId: string, patch: OwnProfilePatch) {
         ...(patch.profileVisibility ? { profileVisibility: patch.profileVisibility } : {}),
       }).returning({ id: gamerProfiles.id });
       profileId = created.id;
-    }
-
-    if (patch.games) {
-      const existingGames = await tx.select({ gameId: gamerGames.gameId, verified: gamerGames.verified })
-        .from(gamerGames).where(eq(gamerGames.gamerId, profileId));
-      const verifiedByGame = new Map(existingGames.map((row) => [row.gameId, row.verified]));
-      await tx.delete(gamerGames).where(eq(gamerGames.gamerId, profileId));
-      if (patch.games.length > 0) {
-        await tx.insert(gamerGames).values(patch.games.map((entry) => ({
-          gamerId: profileId,
-          gameId: entry.gameId,
-          inGameName: entry.inGameName,
-          primaryRole: entry.primaryRole ?? null,
-          platform: entry.platform ?? null,
-          verified: verifiedByGame.get(entry.gameId) ?? false,
-        })));
-      }
     }
     return profileId;
   });

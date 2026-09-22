@@ -33,7 +33,7 @@ export default async function AdminGamerEditPage({ params }: { params: Promise<{
       profileVisibility: gamer.profileVisibility,
       verificationStatus: gamer.verificationStatus,
       rankingPoints: gamer.rankingPoints,
-      games: gamer.games.map((entry) => ({ gameId: entry.gameId, inGameName: entry.inGameName })),
+      games: gamer.games.map((entry) => ({ gameId: entry.gameId, game: entry.game })),
       achievements: gamer.achievements.map((entry) => ({
         category: entry.category as AchievementCategory,
         title: entry.title,

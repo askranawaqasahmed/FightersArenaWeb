@@ -4,7 +4,6 @@ import {
   cities,
   countries,
   divisions,
-  gamerGames,
   gamerProfiles,
   games,
   matchSides,
@@ -17,6 +16,7 @@ import {
   teams,
   tournaments,
 } from "@/db/schema";
+import { playedGamesByGamer } from "@/lib/played-games";
 
 export type BoardSide = {
   slot: number;
@@ -322,24 +322,12 @@ export async function getBoardState(
   const wantProfiles = Boolean(opts.includeProfile || opts.allProfiles);
   const profileBySlot = new Map<number, BoardFeatured | null>();
   if (wantProfiles) {
-    const gameRowsAll = gamerIds.length
-      ? await executor
-          .select({
-            gamerId: gamerGames.gamerId,
-            game: games.name,
-            inGameName: gamerGames.inGameName,
-            primaryRole: gamerGames.primaryRole,
-            platform: gamerGames.platform,
-          })
-          .from(gamerGames)
-          .innerJoin(games, eq(games.id, gamerGames.gameId))
-          .where(inArray(gamerGames.gamerId, gamerIds))
-      : [];
+    // Games come from tournaments played and career highlights; the handle is the in-game name.
+    const played = await playedGamesByGamer(gamerIds, executor);
     const gamesByGamer = new Map<string, BoardFeatured["games"]>();
-    for (const row of gameRowsAll) {
-      const list = gamesByGamer.get(row.gamerId) ?? [];
-      list.push({ game: row.game, inGameName: row.inGameName, primaryRole: row.primaryRole, platform: row.platform });
-      gamesByGamer.set(row.gamerId, list);
+    for (const [gamerId, list] of played) {
+      const handle = gamerById.get(gamerId)?.handle ?? "";
+      gamesByGamer.set(gamerId, list.map((entry) => ({ game: entry.game, inGameName: handle, primaryRole: null, platform: null })));
     }
     const recordRows = participantIds.length
       ? await executor

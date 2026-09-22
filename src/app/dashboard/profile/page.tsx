@@ -45,12 +45,7 @@ export default async function EditProfilePage() {
             cityId: profile.cityId,
             profileVisibility: profile.profileVisibility,
           }}
-          games={profile.games.map((entry) => ({
-            gameId: entry.gameId,
-            inGameName: entry.inGameName,
-            primaryRole: entry.primaryRole,
-            platform: entry.platform,
-          }))}
+          games={profile.games.map((entry) => ({ gameId: entry.gameId, game: entry.game }))}
           achievements={achievements.map((entry) => ({
             id: entry.id,
             category: entry.category,

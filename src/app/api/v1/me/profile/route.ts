@@ -3,13 +3,6 @@ import { apiData, apiProblem, invalidInput } from "@/lib/api";
 import { getOwnProfile, upsertOwnProfile } from "@/lib/me-data";
 import { getRequestGamer } from "@/lib/request-auth";
 
-const gameEntrySchema = z.object({
-  gameId: z.uuid(),
-  inGameName: z.string().trim().min(1).max(100),
-  primaryRole: z.string().trim().max(80).nullish(),
-  platform: z.string().trim().max(64).nullish(),
-});
-
 const patchSchema = z.object({
   displayName: z.string().trim().min(2).max(100).optional(),
   handle: z.string().trim().min(2).max(80).optional(),
@@ -17,7 +10,6 @@ const patchSchema = z.object({
   countryId: z.uuid().nullable().optional(),
   cityId: z.uuid().nullable().optional(),
   profileVisibility: z.enum(["private", "sponsors", "public"]).optional(),
-  games: z.array(gameEntrySchema).max(20).optional(),
 });
 
 export async function GET(request: Request) {

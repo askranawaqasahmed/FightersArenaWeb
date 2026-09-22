@@ -7,7 +7,7 @@ import { useState } from "react";
 import { achievementCategories, achievementCategoryLabels, type AchievementCategory } from "@/lib/achievement-labels";
 
 type Option = { id: string; name: string };
-type GameRow = { gameId: string; inGameName: string };
+type GameRow = { gameId: string; game: string };
 type AchievementRow = { category: AchievementCategory; title: string; detail: string; gameId: string; yearLabel: string };
 
 export type AdminGamerEditorData = {
@@ -36,7 +36,6 @@ export function AdminGamerEditor({ gamer, gameOptions, cityOptions }: {
   const [visibility, setVisibility] = useState(gamer.profileVisibility);
   const [verification, setVerification] = useState(gamer.verificationStatus);
   const [points, setPoints] = useState(gamer.rankingPoints);
-  const [gameRows, setGameRows] = useState<GameRow[]>(gamer.games);
   const [achievements, setAchievements] = useState<AchievementRow[]>(gamer.achievements);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
@@ -64,9 +63,6 @@ export function AdminGamerEditor({ gamer, gameOptions, cityOptions }: {
           profileVisibility: visibility,
           verificationStatus: verification,
           rankingPoints: Number(points) || 0,
-          games: gameRows
-            .filter((row) => row.gameId && row.inGameName.trim() !== "")
-            .map((row) => ({ gameId: row.gameId, inGameName: row.inGameName.trim() })),
           achievements: achievements
             .filter((row) => row.title.trim() !== "")
             .map((row) => ({
@@ -91,7 +87,7 @@ export function AdminGamerEditor({ gamer, gameOptions, cityOptions }: {
   return <main className="admin-content admin-editor-content">
     <Link className="text-link" href={`/admin/gamers/${gamer.slug}`}><ArrowLeft size={14} /> Gamer details</Link>
     <div className="section-header" style={{ marginTop: 18 }}>
-      <div><h1 className="admin-heading">Edit {gamer.handle}</h1><p className="admin-subtitle">Update identity, games, career highlights and verification.</p></div>
+      <div><h1 className="admin-heading">Edit {gamer.handle}</h1><p className="admin-subtitle">Update identity, career highlights and verification.</p></div>
       <button className="button button-primary" type="button" disabled={saving} onClick={save}><Save size={15} /> {saving ? "Saving…" : "Save gamer"}</button>
     </div>
     {error && <p className="form-message form-error" role="alert">{error}</p>}
@@ -112,21 +108,10 @@ export function AdminGamerEditor({ gamer, gameOptions, cityOptions }: {
 
     <section className="card panel entity-editor">
       <h2 className="panel-title">Games</h2>
-      {gameRows.map((row, index) => (
-        <div className="builder-grid" key={`game-${index}`}>
-          <label className="form-group"><span className="form-label">Game</span>
-            <select className="select" value={row.gameId} onChange={(event) => setGameRows((rows) => rows.map((item, position) => (position === index ? { ...item, gameId: event.target.value } : item)))}>
-              <option value="">Select a game</option>
-              {gameOptions.map((game) => <option key={game.id} value={game.id}>{game.name}</option>)}
-            </select>
-          </label>
-          <label className="form-group"><span className="form-label">In-game name</span>
-            <input className="input" value={row.inGameName} onChange={(event) => setGameRows((rows) => rows.map((item, position) => (position === index ? { ...item, inGameName: event.target.value } : item)))} />
-          </label>
-          <button type="button" className="button button-secondary button-small" onClick={() => setGameRows((rows) => rows.filter((_, position) => position !== index))}><Trash2 size={14} /> Remove</button>
-        </div>
-      ))}
-      <button type="button" className="button button-secondary button-small" onClick={() => setGameRows((rows) => [...rows, { gameId: "", inGameName: handle }])}><Plus size={14} /> Add a game</button>
+      <p className="helper">Games come from the tournaments this player has played and the games on their career highlights. To list another game, add a highlight for it below.</p>
+      {gamer.games.length > 0
+        ? <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>{gamer.games.map((entry) => <span className="filter-chip static" key={entry.gameId}>{entry.game}</span>)}</div>
+        : <p className="muted">No games yet.</p>}
     </section>
 
     <section className="card panel entity-editor">

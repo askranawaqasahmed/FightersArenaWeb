@@ -4,7 +4,6 @@ import {
   cities,
   countries,
   divisions,
-  gamerGames,
   gamerProfiles,
   games,
   registrations,
@@ -41,10 +40,6 @@ describe("public gamer read model against PostgreSQL", () => {
             avatarUrl: `/api/v1/media/avatars/${handle.toLowerCase()}.png`,
             profileVisibility: visibility, verificationStatus: "verified", rankingPoints: points,
           }).returning();
-          await tx.insert(gamerGames).values({
-            gamerId: gp.id, gameId: game.id, inGameName: `${handle}_IGN`,
-            primaryRole: "Rushdown", platform: "PS5", verified: true,
-          });
           return gp;
         };
 
@@ -77,7 +72,8 @@ describe("public gamer read model against PostgreSQL", () => {
           points: 5000,
         });
         expect(profile!.city).toBe(`Testville-${suffix}`);
-        expect(profile!.games[0]).toMatchObject({ inGameName: `TOP${suffix}_IGN`, platform: "PS5" });
+        // Games are derived from play, so a player who has not competed has none.
+        expect(profile!.games).toEqual([]);
         // No events entered yet.
         expect(profile!.events).toEqual([]);
         expect(profile!.totals).toMatchObject({ events: 0, played: 0, wins: 0, titles: 0 });
@@ -104,6 +100,7 @@ describe("public gamer read model against PostgreSQL", () => {
 
         // The profile now lists the event it was entered into.
         const withEvent = await getPublicGamer(top.slug, tx);
+        expect(withEvent!.games).toEqual([{ game: game.name, inGameName: `TOP${suffix}`, primaryRole: null, platform: null, verified: true }]);
         expect(withEvent!.events).toHaveLength(1);
         expect(withEvent!.events[0]).toMatchObject({
           tournamentSlug: event.slug,

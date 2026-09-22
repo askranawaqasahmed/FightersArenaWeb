@@ -14,12 +14,6 @@ const patchSchema = z.object({
   profileVisibility: z.enum(["private", "sponsors", "public"]).optional(),
   verificationStatus: z.enum(["unverified", "pending", "verified", "rejected"]).optional(),
   rankingPoints: z.number().int().min(0).max(1_000_000).optional(),
-  games: z.array(z.object({
-    gameId: z.uuid(),
-    inGameName: z.string().trim().min(1).max(100),
-    primaryRole: z.string().trim().max(80).nullish(),
-    platform: z.string().trim().max(64).nullish(),
-  })).max(40).optional(),
   achievements: z.array(z.object({
     category: z.enum(achievementCategories),
     title: z.string().trim().min(2).max(200),

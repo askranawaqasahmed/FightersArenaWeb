@@ -9,7 +9,6 @@ import {
   divisions,
   gamerAchievements,
   gamerCredentials,
-  gamerGames,
   gamerProfiles,
   games,
   roles,
@@ -22,6 +21,7 @@ import {
 } from "@/db/schema";
 import { LifecycleError } from "@/domain/tournament-lifecycle";
 import { hashPassword } from "@/lib/password";
+import { playedGamesByGamer } from "@/lib/played-games";
 import { uniqueProfileSlug } from "@/lib/slug";
 import type { AchievementCategory } from "@/lib/achievement-labels";
 
@@ -36,13 +36,6 @@ export type AdminGamerListItem = {
   points: number;
   verificationStatus: string;
   accountStatus: string;
-};
-
-export type AdminGamerGameInput = {
-  gameId: string;
-  inGameName: string;
-  primaryRole?: string | null;
-  platform?: string | null;
 };
 
 export type AdminGamerAchievementInput = {
@@ -62,7 +55,6 @@ export type AdminGamerPatch = {
   profileVisibility?: "private" | "sponsors" | "public";
   verificationStatus?: "unverified" | "pending" | "verified" | "rejected";
   rankingPoints?: number;
-  games?: AdminGamerGameInput[];
   achievements?: AdminGamerAchievementInput[];
 };
 
@@ -87,11 +79,7 @@ export async function listAdminGamers(): Promise<AdminGamerListItem[]> {
 
   const identities = await db.select({ userId: userIdentities.userId, type: userIdentities.type, value: userIdentities.normalizedValue })
     .from(userIdentities);
-  const gameRows = await db.select({ gamerId: gamerGames.gamerId, game: games.name })
-    .from(gamerGames).innerJoin(games, eq(games.id, gamerGames.gameId)).orderBy(asc(games.name));
-
-  const primaryGame = new Map<string, string>();
-  for (const row of gameRows) if (!primaryGame.has(row.gamerId)) primaryGame.set(row.gamerId, row.game);
+  const played = await playedGamesByGamer(rows.map((row) => row.id));
 
   return rows.map((row) => ({
     slug: row.slug,
@@ -100,7 +88,7 @@ export async function listAdminGamers(): Promise<AdminGamerListItem[]> {
     email: identities.find((entry) => entry.userId === row.userId && entry.type === "email")?.value ?? null,
     phone: identities.find((entry) => entry.userId === row.userId && entry.type === "phone")?.value ?? null,
     city: row.city,
-    game: primaryGame.get(row.id) ?? null,
+    game: played.get(row.id)?.[0]?.game ?? null,
     points: row.points,
     verificationStatus: row.verificationStatus,
     accountStatus: row.accountStatus,
@@ -134,18 +122,10 @@ export async function getAdminGamer(slug: string) {
     .limit(1);
   if (!profile) return null;
 
-  const [identities, gameRows, achievementRows] = await Promise.all([
+  const [identities, played, achievementRows] = await Promise.all([
     db.select({ type: userIdentities.type, value: userIdentities.normalizedValue })
       .from(userIdentities).where(eq(userIdentities.userId, profile.userId)),
-    db.select({
-      gameId: gamerGames.gameId,
-      game: games.name,
-      inGameName: gamerGames.inGameName,
-      primaryRole: gamerGames.primaryRole,
-      platform: gamerGames.platform,
-      verified: gamerGames.verified,
-    }).from(gamerGames).innerJoin(games, eq(games.id, gamerGames.gameId))
-      .where(eq(gamerGames.gamerId, profile.id)).orderBy(asc(games.name)),
+    playedGamesByGamer([profile.id]),
     db.select({
       id: gamerAchievements.id,
       category: gamerAchievements.category,
@@ -164,7 +144,8 @@ export async function getAdminGamer(slug: string) {
     createdAt: profile.createdAt.toISOString(),
     email: identities.find((entry) => entry.type === "email")?.value ?? null,
     phone: identities.find((entry) => entry.type === "phone")?.value ?? null,
-    games: gameRows,
+    // Read-only: games come from tournaments played and career highlights.
+    games: (played.get(profile.id) ?? []).map((entry) => ({ ...entry, inGameName: profile.handle, primaryRole: null, platform: null })),
     achievements: achievementRows,
   };
 }
@@ -242,24 +223,6 @@ export async function updateAdminGamer(slug: string, patch: AdminGamerPatch, act
     };
     if (Object.keys(fields).length > 0) {
       await tx.update(gamerProfiles).set({ ...fields, updatedAt: new Date() }).where(eq(gamerProfiles.id, profile.id));
-    }
-
-    if (patch.games) {
-      // Preserve the verified flag: replacing the rows must not silently verify a game.
-      const existing = await tx.select({ gameId: gamerGames.gameId, verified: gamerGames.verified })
-        .from(gamerGames).where(eq(gamerGames.gamerId, profile.id));
-      const verifiedByGame = new Map(existing.map((row) => [row.gameId, row.verified]));
-      await tx.delete(gamerGames).where(eq(gamerGames.gamerId, profile.id));
-      if (patch.games.length > 0) {
-        await tx.insert(gamerGames).values(patch.games.map((entry) => ({
-          gamerId: profile.id,
-          gameId: entry.gameId,
-          inGameName: entry.inGameName,
-          primaryRole: entry.primaryRole ?? null,
-          platform: entry.platform ?? null,
-          verified: verifiedByGame.get(entry.gameId) ?? false,
-        })));
-      }
     }
 
     if (patch.achievements) {

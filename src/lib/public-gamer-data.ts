@@ -5,7 +5,6 @@ import {
   countries,
   divisions,
   gamerAchievements,
-  gamerGames,
   gamerProfiles,
   games,
   registrations,
@@ -19,6 +18,7 @@ import {
   tournaments,
 } from "@/db/schema";
 import { isPodium, isTitle } from "@/lib/placement";
+import { playedGamesByGamer } from "@/lib/played-games";
 
 /** Only fully public profiles are exposed. "sponsors" visibility is not general-public. */
 const publicVisibility = "public" as const;
@@ -119,15 +119,9 @@ const baseSelection = {
 
 /** Primary game per gamer, chosen deterministically so list and detail agree. */
 async function primaryGames(gamerIds: string[], executor: DbExecutor) {
-  if (gamerIds.length === 0) return new Map<string, string>();
-  const rows = await executor
-    .select({ gamerId: gamerGames.gamerId, game: games.name })
-    .from(gamerGames)
-    .innerJoin(games, eq(games.id, gamerGames.gameId))
-    .where(inArray(gamerGames.gamerId, gamerIds))
-    .orderBy(asc(games.name));
+  const played = await playedGamesByGamer(gamerIds, executor);
   const map = new Map<string, string>();
-  for (const row of rows) if (!map.has(row.gamerId)) map.set(row.gamerId, row.game);
+  for (const [gamerId, list] of played) if (list[0]) map.set(gamerId, list[0].game);
   return map;
 }
 
@@ -237,18 +231,15 @@ async function getGamerProfileData(
       gt(gamerProfiles.rankingPoints, profile.rankingPoints),
     ));
 
-  const gameRows = await executor
-    .select({
-      game: games.name,
-      inGameName: gamerGames.inGameName,
-      primaryRole: gamerGames.primaryRole,
-      platform: gamerGames.platform,
-      verified: gamerGames.verified,
-    })
-    .from(gamerGames)
-    .innerJoin(games, eq(games.id, gamerGames.gameId))
-    .where(eq(gamerGames.gamerId, profile.id))
-    .orderBy(asc(games.name));
+  // Games come from tournaments played and career highlights; the handle is the in-game name.
+  const played = (await playedGamesByGamer([profile.id], executor)).get(profile.id) ?? [];
+  const gameRows = played.map((entry) => ({
+    game: entry.game,
+    inGameName: profile.handle,
+    primaryRole: null,
+    platform: null,
+    verified: entry.verified,
+  }));
 
   // Competitive record: registrations joined to the standings of each division's stages.
   // Mirrors the private dashboard aggregation, restricted to publicly visible tournaments.
