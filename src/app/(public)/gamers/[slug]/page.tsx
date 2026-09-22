@@ -1,22 +1,28 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Award, BadgeCheck, CalendarDays, Download, Gamepad2, GraduationCap, MapPin, ShieldCheck, Swords, Trophy, Users } from "lucide-react";
+import { achievementGroupTitles, type AchievementCategory } from "@/lib/achievement-labels";
 import { getPublicGamer, type PublicGamerAchievement } from "@/lib/public-gamer-data";
 import { isTitle, placementBadge, placementLabel, placementMedalClass } from "@/lib/placement";
 import { publicStatusLabel } from "@/lib/public-tournament-data";
 
 export const dynamic = "force-dynamic";
 
-const ACHIEVEMENT_GROUPS: Array<{ category: string; title: string; icon: typeof Award }> = [
-  { category: "milestone", title: "Milestones", icon: Award },
-  { category: "highlight", title: "Career highlights", icon: Trophy },
-  { category: "coaching", title: "Players coached", icon: GraduationCap },
-  { category: "player_developed", title: "Players developed", icon: Users },
+// Headings come from the shared module so the page and the PDF cannot drift apart.
+const ACHIEVEMENT_GROUPS: Array<{ category: AchievementCategory; icon: typeof Award }> = [
+  { category: "milestone", icon: Award },
+  { category: "highlight", icon: Trophy },
+  { category: "coaching", icon: GraduationCap },
+  { category: "player_developed", icon: Users },
 ];
 
 function groupAchievements(achievements: PublicGamerAchievement[]) {
   return ACHIEVEMENT_GROUPS
-    .map((group) => ({ ...group, items: achievements.filter((entry) => entry.category === group.category) }))
+    .map((group) => ({
+      ...group,
+      title: achievementGroupTitles[group.category],
+      items: achievements.filter((entry) => entry.category === group.category),
+    }))
     .filter((group) => group.items.length > 0);
 }
 

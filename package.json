@@ -17,6 +17,7 @@
     "db:seed": "tsx src/db/seed.ts",
     "db:seed:content": "tsx src/db/seed-content.ts",
     "db:seed:players": "tsx src/db/seed-babar.ts",
+    "db:reframe-development": "tsx src/db/reframe-development.ts",
     "db:cleanup-demo": "tsx src/db/cleanup-demo.ts",
     "db:reset": "tsx src/db/reset.ts",
     "typecheck": "tsc --noEmit"

@@ -5,7 +5,7 @@ export type AchievementCategory = typeof achievementCategories[number];
 export const achievementCategoryLabels: Record<AchievementCategory, string> = {
   milestone: "Milestone",
   highlight: "Career highlight",
-  coaching: "Player coached",
+  coaching: "Player or team coached",
   player_developed: "Player developed",
 };
 
@@ -13,6 +13,6 @@ export const achievementCategoryLabels: Record<AchievementCategory, string> = {
 export const achievementGroupTitles: Record<AchievementCategory, string> = {
   milestone: "Milestones",
   highlight: "Career highlights",
-  coaching: "Players coached",
+  coaching: "Players and teams coached",
   player_developed: "Players developed",
 };

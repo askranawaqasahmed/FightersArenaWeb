@@ -117,10 +117,13 @@ export const seedGamers: SeedGamer[] = [
       { category: "coaching", title: "Babarzaki" },
       { category: "coaching", title: "Team Maiden Mature" },
       { category: "coaching", title: "Team Yagami Syndicate" },
-      { category: "player_developed", title: "MehtabKai", detail: "KOF97 and KOF98, KPL 3.0." },
-      { category: "player_developed", title: "KamranBilly", detail: "Dubai tournament, 3rd position." },
-      { category: "player_developed", title: "HammadKhan", detail: "Dubai tournament, 3rd position." },
-      { category: "player_developed", title: "Farhan", detail: "KOF99 KPL 1.0 Champion; Cyberfanatics KOF98 Runner-up." },
+      // Named individuals are deliberately left out here: this section describes the
+      // contribution, not other people's profiles, matching the wording of his own
+      // career profile document.
+      { category: "player_developed", title: "Tournament preparation", detail: "Helping players prepare for pressure, set structure, adaptation and match readiness." },
+      { category: "player_developed", title: "Matchup and strategy", detail: "Guidance in opponent tendencies, character knowledge and game-plan refinement." },
+      { category: "player_developed", title: "Long-term development", detail: "Supporting steady improvement through practice structure, discipline and review." },
+      { category: "player_developed", title: "Competitive mentorship", detail: "Providing coaching support that helps players become more confident and independent decision-makers." },
     ],
   },
   {
