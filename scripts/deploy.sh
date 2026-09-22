@@ -57,8 +57,13 @@ NODE_ENV=production npm run build
 
 step "Publishing standalone assets"
 # Next's standalone server does not bundle these, so they are copied beside it.
+# The destinations are cleared first: `cp -r src dest` copies *into* dest once dest
+# exists, so repeating the deploy would otherwise nest public/public and serve a 404
+# for everything added after the first deploy.
+rm -rf .next/standalone/.next/static .next/standalone/public
+mkdir -p .next/standalone/.next .next/standalone/public
 cp -r .next/static .next/standalone/.next/static
-if [ -d public ]; then cp -r public .next/standalone/public; fi
+if [ -d public ]; then cp -r public/. .next/standalone/public/; fi
 cp .env.production .next/standalone/.env.production
 
 # `dotenv/config` reads .env, not .env.production, so the CLI scripts would
