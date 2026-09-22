@@ -86,6 +86,31 @@
   .public-site .profile-hero .avatar { width: 104px; height: 104px; }
   .public-site .achievement { flex-direction: column; align-items: flex-start; gap: 9px; }
   .achievement-result { width: 100%; }
+  /* The download button is the point of the profile on a phone: give it the full width. */
+  .public-site .profile-hero .button-primary { justify-content: center; width: 100%; }
+}
+
+/* Touch targets. A finger needs roughly 44px; these links are laid out for a cursor and
+   come out at 17-21px, which is a mistap in a stacked list. Padding is added on touch
+   pointers only, so the desktop layout keeps its tighter spacing. */
+@media (pointer: coarse) {
+  .public-site .footer-links a,
+  .public-site .footer-links a:visited { min-height: 44px; align-items: center; }
+  .public-site .achievement a { display: inline-flex; align-items: center; min-height: 44px; }
+  .public-site .header-actions .join-button { min-height: 44px; }
+  .mobile-menu { width: 46px; height: 46px; }
+  .text-link { display: inline-flex; align-items: center; min-height: 44px; }
+  .button-small { min-height: 44px; }
+  /* The carousel dots stay the same size; the tappable box around them grows.
+     A 3px-tall bar is a precise target for a cursor and a guess for a thumb. */
+  .arena-hero .slider-dots button { height: 44px; }
+  .arena-hero .slider-dots button::after { inset: 20px 0 auto; }
+  .arena-hero .slider-nav button,
+  .arena-hero .slider-controls button { min-width: 44px; min-height: 44px; }
+  /* A tapped row should look tapped: the hover tint never fires on touch. */
+  .public-site .achievement:active { background: rgba(139,79,244,.12); }
+  .public-site .gamer-card:active,
+  .public-site .tournament-card:active { transform: scale(.995); }
 }
 
 .arena-hero { position: relative; overflow: hidden; min-height: 650px; isolation: isolate; background: #15101f; touch-action: pan-y; }
@@ -167,7 +192,7 @@
 @media (max-width: 640px) {
   .header-inner { gap: 10px; }
   .brand-name { font-size: 15px; }
-  .public-site .header-actions .join-button { display: inline-flex; min-height: 38px; padding-inline: 10px; font-size: 11px; }
+  .public-site .header-actions .join-button { display: inline-flex; min-height: 44px; padding-inline: 10px; font-size: 11px; }
   .join-button svg { display: none; }
   .public-site .section { padding-block: 48px; }
   .public-site .section-header { flex-direction: row; align-items: end; gap: 18px; }
