@@ -51,6 +51,7 @@ export const seedGamers: SeedGamer[] = [
     email: "hazz@fightersarena.com",
     bio: "Competitive esports player. Fatal Fury: City of the Wolves specialist with a decade in Pakistan's fighting game scene, previously undefeated across his King of Fighters 2002 run.",
     avatarUrl: "/images/gamers/hazz.jpg",
+    profilePdfUrl: "/profiles/hazz.pdf",
     phone: "+923431263350",
     gameKeys: ["kof2002", "kofxv", "sf6", "fatalfury"],
     placements: [

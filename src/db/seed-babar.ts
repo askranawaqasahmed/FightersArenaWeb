@@ -48,9 +48,12 @@ async function run() {
         await db.update(gamerProfiles).set({ avatarUrl: gamer.avatarUrl })
           .where(and(eq(gamerProfiles.id, existing.id), isNull(gamerProfiles.avatarUrl)));
       }
+      // Unlike the copy fields, this one is set outright: it names a file shipped with
+      // the build rather than anything written in the portal, so replacing the PDF and
+      // re-running is how a designed profile gets updated.
       if (gamer.profilePdfUrl) {
         await db.update(gamerProfiles).set({ profilePdfUrl: gamer.profilePdfUrl })
-          .where(and(eq(gamerProfiles.id, existing.id), isNull(gamerProfiles.profilePdfUrl)));
+          .where(eq(gamerProfiles.id, existing.id));
       }
       if (gamer.displayName) {
         await db.update(gamerProfiles).set({ displayName: gamer.displayName })
