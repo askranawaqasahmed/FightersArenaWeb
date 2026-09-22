@@ -6,16 +6,23 @@
  * production, so it can no longer introduce a new player. This script is the
  * additive follow-up: it is idempotent, it never overwrites a field an operator
  * has since edited in the portal, and it can be re-run safely.
+ *
+ * Changes to data that already exists in production run as one-time revisions,
+ * each recorded by an audit marker, so a re-run never brings back a record an
+ * operator has since removed.
  */
-import { eq, or, and, isNull } from "drizzle-orm";
+import { eq, or, and, isNull, sql } from "drizzle-orm";
 import { db, sqlClient } from "./client";
 import {
+  auditEvents,
+  divisions,
   gamerAchievements,
   gamerCredentials,
   gamerGames,
   gamerProfiles,
   roles,
   tournamentParticipantSnapshots,
+  tournaments,
   userIdentities,
   userRoles,
   users,
@@ -23,12 +30,100 @@ import {
 import { hashPassword } from "@/lib/password";
 import { referenceIds, seedId } from "./seed-data/ids";
 import { gameIdByKey } from "./seed-data/games";
-import { startsAtFor, tournamentByKey } from "./seed-data/tournaments";
+import { datePrecisionFor, seedTournaments, startsAtFor, tournamentByKey } from "./seed-data/tournaments";
 import { seedGamers } from "./seed-data/gamers";
 
 const GAMER_PASSWORD = process.env.SEED_GAMER_PASSWORD ?? "123456";
+const REVISION_ACTION = "seed.player_revision";
+
+/** Runs `apply` once per database, then records `key` so a re-run skips it. */
+async function once(key: string, apply: () => Promise<void>) {
+  const [marker] = await db.select({ id: auditEvents.id }).from(auditEvents)
+    .where(and(eq(auditEvents.action, REVISION_ACTION), sql`${auditEvents.metadata}->>'key' = ${key}`)).limit(1);
+  if (marker) return;
+  await apply();
+  await db.insert(auditEvents).values({ action: REVISION_ACTION, entityType: "platform", metadata: { key } });
+  console.log(`Applied revision ${key}.`);
+}
+
+/** Events added after go-live, which the one-time content seed can no longer create. */
+async function addLaterEvents() {
+  const later = seedTournaments.filter((tournament) => tournament.addedAfterGoLive);
+  if (later.length === 0) return;
+  await db.insert(tournaments).values(later.map((tournament) => ({
+    id: tournament.id,
+    slug: tournament.slug,
+    name: tournament.name,
+    competitionType: tournament.competitionType,
+    description: tournament.description ?? null,
+    status: "completed" as const,
+    countryId: tournament.abroad ? null : referenceIds.pakistan,
+    startsAt: startsAtFor(tournament),
+    endsAt: startsAtFor(tournament),
+    completedAt: startsAtFor(tournament),
+    online: tournament.online ?? true,
+    featured: false,
+    hasBracket: false,
+    datePrecision: datePrecisionFor(tournament),
+  }))).onConflictDoNothing();
+  await db.insert(divisions).values(later.map((tournament) => ({
+    id: tournament.divisionId,
+    tournamentId: tournament.id,
+    gameId: gameIdByKey[tournament.gameKey],
+    name: tournament.competitionType === "league" ? "League" : "Main bracket",
+    competitionType: tournament.competitionType,
+    status: "completed" as const,
+    participantType: "gamer" as const,
+    maxParticipants: 2,
+    rosterMin: 1,
+    rosterMax: 1,
+  }))).onConflictDoNothing();
+}
+
+/**
+ * Brings Kashif's record in line with his updated profile PDF. Copy is replaced only
+ * while it still reads as originally seeded, so an edit made in the portal stands.
+ */
+async function reviseKashifFromUpdatedPdf() {
+  const lane = seedGamers.findIndex((gamer) => gamer.key === "kashif") + 1;
+  const kashif = seedGamers[lane - 1];
+  const showdown = tournamentByKey["fighters-arena-showdown-2026"];
+  await db.update(tournamentParticipantSnapshots).set({ finalRank: 3, placementLabel: null })
+    .where(and(
+      eq(tournamentParticipantSnapshots.participantId, kashif.profileId),
+      eq(tournamentParticipantSnapshots.divisionId, showdown.divisionId),
+    ));
+  await db.update(gamerAchievements)
+    .set({ title: "One of the earliest Pakistani fighting-game competitors to secure international sponsorship", updatedAt: new Date() })
+    .where(and(
+      eq(gamerAchievements.gamerId, kashif.profileId),
+      eq(gamerAchievements.title, "First player from Pakistan to secure an international sponsorship"),
+    ));
+  await db.update(gamerProfiles).set({ bio: kashif.bio, updatedAt: new Date() })
+    .where(and(
+      eq(gamerProfiles.id, kashif.profileId),
+      eq(gamerProfiles.bio, "Competitive esports player, coach and mentor. More than 25 years in competitive fighting games, and the first player from Pakistan to secure an international sponsorship."),
+    ));
+  // The two entries the updated PDF adds are the last two in the seed list.
+  const added = kashif.achievements.slice(-2);
+  const firstIndex = kashif.achievements.length - added.length;
+  await db.insert(gamerAchievements).values(added.map((achievement, offset) => ({
+    id: seedId(4001 + firstIndex + offset, lane),
+    gamerId: kashif.profileId,
+    category: achievement.category,
+    title: achievement.title,
+    detail: achievement.detail ?? null,
+    gameId: achievement.gameKey ? gameIdByKey[achievement.gameKey] : null,
+    yearLabel: achievement.yearLabel ?? null,
+    sequence: firstIndex + offset,
+    verified: true,
+  }))).onConflictDoNothing();
+}
 
 async function run() {
+  await once("post-go-live-events-2026-09", addLaterEvents);
+  await once("kashif-updated-pdf-2026-09", reviseKashifFromUpdatedPdf);
+
   const [gamerRole] = await db.select({ id: roles.id }).from(roles).where(eq(roles.key, "gamer")).limit(1);
   if (!gamerRole) throw new Error("gamer role missing. Run `npm run db:seed` first.");
   const passwordHash = await hashPassword(GAMER_PASSWORD);

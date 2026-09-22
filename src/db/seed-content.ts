@@ -45,7 +45,7 @@ async function seedContent() {
     competitionType: tournament.competitionType,
     description: tournament.description ?? null,
     status: "completed" as const,
-    countryId: referenceIds.pakistan,
+    countryId: tournament.abroad ? null : referenceIds.pakistan,
     startsAt: startsAtFor(tournament),
     endsAt: startsAtFor(tournament),
     completedAt: startsAtFor(tournament),

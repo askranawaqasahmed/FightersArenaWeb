@@ -14,6 +14,14 @@ export type SeedTournament = {
   year: number | null;
   description?: string;
   online?: boolean;
+  /** Held outside Pakistan; only Pakistan is seeded as a country, so no country is recorded. */
+  abroad?: boolean;
+  /**
+   * Added after go-live. The one-time content seed has already run in production, so
+   * the player sync creates these once (see seed-babar.ts); the go-live seed still
+   * creates them on a fresh database.
+   */
+  addedAfterGoLive?: true;
 };
 
 /**
@@ -52,6 +60,16 @@ const events: Array<Omit<SeedTournament, "id" | "divisionId">> = [
   { key: "cyberfanatics-kof98", slug: "cyberfanatics-kof98", name: "Cyberfanatics KOF98", gameKey: "kof98um", competitionType: "tournament", year: null },
   { key: "cyberfanatics-kof98-league", slug: "cyberfanatics-kof98-league", name: "Cyberfanatics KOF98 League", gameKey: "kof98um", competitionType: "league", year: null },
   { key: "kvl", slug: "karachi-vs-lahore", name: "Karachi vs Lahore (KVL)", gameKey: "kof98um", competitionType: "tournament", year: null },
+
+  // Added after go-live. Always append: ids come from each event's position in this list.
+  { key: "takedown-2023", slug: "takedown-season-1-2023", name: "Takedown Season 1 2023", gameKey: "kofxv", competitionType: "tournament", year: 2023, online: false, description: "Held in Lahore.", addedAfterGoLive: true },
+  { key: "slash-and-dash-3-2022", slug: "3rd-slash-and-dash-2022", name: "3rd Slash and Dash 2022", gameKey: "kofxv", competitionType: "tournament", year: 2022, online: false, description: "Held in Lahore.", addedAfterGoLive: true },
+  { key: "slash-and-dash-4-2022", slug: "4th-slash-and-dash-2022", name: "4th Slash and Dash 2022", gameKey: "kofxv", competitionType: "tournament", year: 2022, online: false, description: "Held in Lahore.", addedAfterGoLive: true },
+  { key: "takra-cup-2022", slug: "takra-cup-2022", name: "Takra Cup 2022", gameKey: "kofxv", competitionType: "tournament", year: 2022, online: false, description: "Held in Islamabad.", addedAfterGoLive: true },
+  { key: "emirates-showdown-2023", slug: "emirates-showdown-2023", name: "Emirates Showdown 2023", gameKey: "kofxv", competitionType: "tournament", year: 2023, online: false, abroad: true, description: "Held in Dubai, UAE.", addedAfterGoLive: true },
+  { key: "kumite-2024", slug: "kumite-2024", name: "Kumite 2024", gameKey: "kofxv", competitionType: "tournament", year: 2024, online: false, description: "Held in Karachi.", addedAfterGoLive: true },
+  { key: "saudi-fighting-league-2024", slug: "saudi-fighting-league-2024", name: "Saudi Fighting League 2024", gameKey: "kofxv", competitionType: "tournament", year: 2024, online: false, abroad: true, description: "Held in Riyadh, Saudi Arabia.", addedAfterGoLive: true },
+  { key: "fv-major-2024", slug: "fv-major-2024", name: "FV Major 2024", gameKey: "kofxv", competitionType: "tournament", year: 2024, online: false, abroad: true, description: "Held in Malaysia.", addedAfterGoLive: true },
 ];
 
 export const seedTournaments: SeedTournament[] = events.map((event, index) => ({
