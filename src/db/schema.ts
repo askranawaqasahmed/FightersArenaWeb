@@ -149,6 +149,9 @@ export const gamerProfiles = pgTable("gamer_profiles", {
   countryId: uuid("country_id").references(() => countries.id),
   cityId: uuid("city_id").references(() => cities.id),
   avatarUrl: text("avatar_url"),
+  /** A designed profile PDF supplied for this player. When set it is served instead
+      of the generated one, so the uploaded document is what people download. */
+  profilePdfUrl: text("profile_pdf_url"),
   profileVisibility: visibility("profile_visibility").default("public").notNull(),
   verificationStatus: verificationStatus("verification_status").default("unverified").notNull(),
   rankingPoints: integer("ranking_points").default(0).notNull(),

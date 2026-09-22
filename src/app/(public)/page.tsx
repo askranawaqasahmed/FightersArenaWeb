@@ -66,7 +66,10 @@ export default async function HomePage() {
 
       <section className="section" id="rankings"><div className="container"><SectionHeader eyebrow="National rankings" title="Players to watch" href="/gamers" />
         {featuredGamers.length > 0
-          ? <div className="leaderboard">{featuredGamers.map((gamer) => <Link className="card gamer-card" href={`/gamers/${gamer.slug}`} key={gamer.slug}><div className="gamer-rank">#{gamer.rank}</div><div className="avatar">{gamer.initials}</div><div className="gamer-handle">{gamer.handle} {gamer.verified && <BadgeCheck className="verified" size={16} />}</div><div className="gamer-name">{[gamer.name, gamer.city].filter(Boolean).join(" · ")}</div><div className="gamer-meta"><span>{gamer.game ?? ""}</span><strong className="green">{gamer.points.toLocaleString()} pts</strong></div></Link>)}</div>
+          ? <div className="leaderboard">{featuredGamers.map((gamer) => <Link className="card gamer-card" href={`/gamers/${gamer.slug}`} key={gamer.slug}><div className="gamer-rank">#{gamer.rank}</div>{gamer.avatarUrl
+              // eslint-disable-next-line @next/next/no-img-element -- operator-uploaded avatar from our own media route
+              ? <img className="avatar avatar-image" src={gamer.avatarUrl} alt={gamer.name} />
+              : <div className="avatar">{gamer.initials}</div>}<div className="gamer-handle">{gamer.handle} {gamer.verified && <BadgeCheck className="verified" size={16} />}</div><div className="gamer-name">{[gamer.name, gamer.city].filter(Boolean).join(" · ")}</div><div className="gamer-meta"><span>{gamer.game ?? ""}</span><strong className="green">{gamer.points.toLocaleString()} pts</strong></div></Link>)}</div>
           : <p className="muted">No public player profiles yet. Verified players appear here automatically.</p>}
       </div></section>
 

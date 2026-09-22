@@ -125,6 +125,7 @@ async function seedContent() {
       handle: gamer.handle,
       bio: gamer.bio ?? null,
       avatarUrl: gamer.avatarUrl ?? null,
+      profilePdfUrl: gamer.profilePdfUrl ?? null,
       countryId: referenceIds.pakistan,
       profileVisibility: "public",
       verificationStatus: "verified",

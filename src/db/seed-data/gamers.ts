@@ -33,6 +33,8 @@ export type SeedGamer = {
   bio?: string;
   /** Static portrait under public/. Operator uploads overwrite this later. */
   avatarUrl?: string;
+  /** A designed profile PDF under public/profiles; when set it replaces the generated one. */
+  profilePdfUrl?: string;
   gameKeys: string[];
   placements: SeedPlacement[];
   achievements: SeedAchievement[];
@@ -83,6 +85,9 @@ export const seedGamers: SeedGamer[] = [
     slug: "kashif-yagami",
     handle: "Kashif Yagami",
     email: "kashif@fightersarena.com",
+    bio: "Competitive esports player, coach and mentor. More than 25 years in competitive fighting games, and the first player from Pakistan to secure an international sponsorship.",
+    avatarUrl: "/images/gamers/kashif-yagami.jpg",
+    profilePdfUrl: "/profiles/kashif-yagami.pdf",
     phone: "+923212281481",
     gameKeys: ["kof95", "kof97", "kof98um", "kof99", "kof2000", "kof2002", "kofxiii", "sf5", "fatalfury"],
     placements: [

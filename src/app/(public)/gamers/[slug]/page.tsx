@@ -186,12 +186,18 @@ export default async function GamerProfilePage({ params }: { params: Promise<{ s
             {gamer.games.length > 0 && (
               <>
                 <h2 className="panel-title" style={{ marginTop: 24 }}><Gamepad2 size={17} /> Game identities</h2>
-                {gamer.games.map((entry) => (
-                  <div className="achievement" key={entry.game}>
-                    <div><strong>{entry.game}</strong><div className="muted">{[entry.primaryRole, entry.platform].filter(Boolean).join(" · ") || "In-game name"}</div></div>
-                    <strong>{entry.inGameName}</strong>
-                  </div>
-                ))}
+                {gamer.games.map((entry) => {
+                  // Most players compete under their handle, so repeating it against every
+                  // game just echoes the name in the header. Only show it when it differs.
+                  const alias = entry.inGameName === gamer.handle ? null : entry.inGameName;
+                  const caption = [entry.primaryRole, entry.platform].filter(Boolean).join(" · ");
+                  return (
+                    <div className="achievement" key={entry.game}>
+                      <div><strong>{entry.game}</strong>{caption && <div className="muted">{caption}</div>}</div>
+                      {alias && <strong>{alias}</strong>}
+                    </div>
+                  );
+                })}
               </>
             )}
 

@@ -48,6 +48,10 @@ async function run() {
         await db.update(gamerProfiles).set({ avatarUrl: gamer.avatarUrl })
           .where(and(eq(gamerProfiles.id, existing.id), isNull(gamerProfiles.avatarUrl)));
       }
+      if (gamer.profilePdfUrl) {
+        await db.update(gamerProfiles).set({ profilePdfUrl: gamer.profilePdfUrl })
+          .where(and(eq(gamerProfiles.id, existing.id), isNull(gamerProfiles.profilePdfUrl)));
+      }
       if (gamer.displayName) {
         await db.update(gamerProfiles).set({ displayName: gamer.displayName })
           .where(and(eq(gamerProfiles.id, existing.id), eq(gamerProfiles.displayName, gamer.handle)));
@@ -82,6 +86,7 @@ async function run() {
       handle: gamer.handle,
       bio: gamer.bio ?? null,
       avatarUrl: gamer.avatarUrl ?? null,
+      profilePdfUrl: gamer.profilePdfUrl ?? null,
       countryId: referenceIds.pakistan,
       profileVisibility: "public",
       verificationStatus: "verified",

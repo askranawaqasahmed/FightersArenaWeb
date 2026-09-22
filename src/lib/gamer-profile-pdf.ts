@@ -12,10 +12,15 @@ const MARGIN = 44;
 const CONTENT_WIDTH = PAGE_WIDTH - MARGIN * 2;
 const BOTTOM_LIMIT = 76;
 
-const INK = rgb(0.05, 0.05, 0.06);
-const WHITE = rgb(1, 1, 1);
+const INK = rgb(0.039, 0.047, 0.078);
+const CARD = rgb(0.094, 0.110, 0.149);
+const WHITE = rgb(0.918, 0.925, 0.937);
 const MUTED = rgb(0.62, 0.64, 0.68);
-const GREEN = rgb(0, 0.82, 0.46);
+/** Crimson leads the design; gold marks a title, mint a development note. */
+const ACCENT = rgb(0.843, 0.157, 0.243);
+const GOLD = rgb(0.882, 0.788, 0.400);
+const MINT = rgb(0.361, 0.851, 0.596);
+const GREEN = GOLD;
 const RULE = rgb(0.16, 0.17, 0.19);
 
 /**
@@ -40,6 +45,8 @@ export type ProfilePdfFonts = { regular: PDFFont; bold: PDFFont };
 function newPage(document: PDFDocument): PDFPage {
   const page = document.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
   page.drawRectangle({ x: 0, y: 0, width: PAGE_WIDTH, height: PAGE_HEIGHT, color: INK });
+  // The crimson rule that heads every page of the designed profile.
+  page.drawRectangle({ x: 0, y: PAGE_HEIGHT - 7, width: PAGE_WIDTH, height: 7, color: ACCENT });
   return page;
 }
 
@@ -82,11 +89,16 @@ function drawParagraph(
   }
 }
 
-function drawSectionTitle(document: PDFDocument, cursor: Cursor, title: string, fonts: ProfilePdfFonts) {
-  ensureSpace(document, cursor, 42);
-  cursor.y -= 14;
-  cursor.page.drawText(sanitize(title).toUpperCase(), { x: MARGIN, y: cursor.y, font: fonts.bold, size: 10, color: GREEN });
-  cursor.y -= 8;
+/** Crimson eyebrow over a large title, as in the designed profile. */
+function drawSectionTitle(document: PDFDocument, cursor: Cursor, title: string, fonts: ProfilePdfFonts, eyebrow?: string) {
+  ensureSpace(document, cursor, 58);
+  cursor.y -= 18;
+  if (eyebrow) {
+    cursor.page.drawText(sanitize(eyebrow).toUpperCase(), { x: MARGIN, y: cursor.y, font: fonts.bold, size: 8, color: ACCENT });
+    cursor.y -= 15;
+  }
+  cursor.page.drawText(sanitize(title).toUpperCase(), { x: MARGIN, y: cursor.y, font: fonts.bold, size: 17, color: WHITE });
+  cursor.y -= 10;
   cursor.page.drawLine({
     start: { x: MARGIN, y: cursor.y },
     end: { x: PAGE_WIDTH - MARGIN, y: cursor.y },
@@ -102,27 +114,50 @@ function drawRow(
   cursor: Cursor,
   left: string,
   sub: string | null,
-  right: string,
+  /** Null when there is nothing worth printing in the right-hand column. */
+  right: string | null,
   fonts: ProfilePdfFonts,
   highlight: boolean,
+  /** Overrides the rail colour; coaching and development rows use mint. */
+  rail?: ReturnType<typeof rgb>,
 ) {
-  const rightText = sanitize(right);
+  const rightText = right ? sanitize(right) : "";
   const rightWidth = rightText ? fonts.bold.widthOfTextAtSize(rightText, 10) : 0;
-  const leftWidth = CONTENT_WIDTH - rightWidth - 16;
+  const TEXT_X = MARGIN + 16;
+  const leftWidth = CONTENT_WIDTH - rightWidth - 34;
   const titleLines = wrap(left, fonts.bold, 11, leftWidth);
   const subLines = sub ? wrap(sub, fonts.regular, 8.5, leftWidth) : [];
-  const blockHeight = titleLines.length * 14 + subLines.length * 11 + 10;
+  const cardHeight = titleLines.length * 14 + subLines.length * 11 + 16;
 
-  ensureSpace(document, cursor, blockHeight);
-  const top = cursor.y;
+  ensureSpace(document, cursor, cardHeight + 6);
+  const cardTop = cursor.y + 11;
+  const cardBottom = cardTop - cardHeight;
 
+  // Card body with a coloured rail on the left, as in the designed profile:
+  // gold marks a title, crimson every other finish.
+  cursor.page.drawRectangle({
+    x: MARGIN,
+    y: cardBottom,
+    width: CONTENT_WIDTH,
+    height: cardHeight,
+    color: CARD,
+  });
+  cursor.page.drawRectangle({
+    x: MARGIN,
+    y: cardBottom + 3,
+    width: 3.5,
+    height: cardHeight - 6,
+    color: rail ?? (highlight ? GOLD : ACCENT),
+  });
+
+  const top = cardTop - 14;
   titleLines.forEach((line, index) => {
-    cursor.page.drawText(line, { x: MARGIN, y: top - index * 14, font: fonts.bold, size: 11, color: WHITE });
+    cursor.page.drawText(line, { x: TEXT_X, y: top - index * 14, font: fonts.bold, size: 11, color: WHITE });
   });
   subLines.forEach((line, index) => {
     cursor.page.drawText(line, {
-      x: MARGIN,
-      y: top - titleLines.length * 14 - index * 11,
+      x: TEXT_X,
+      y: top - titleLines.length * 14 - index * 11 + 2,
       font: fonts.regular,
       size: 8.5,
       color: MUTED,
@@ -130,21 +165,15 @@ function drawRow(
   });
   if (rightText) {
     cursor.page.drawText(rightText, {
-      x: PAGE_WIDTH - MARGIN - rightWidth,
+      x: PAGE_WIDTH - MARGIN - rightWidth - 14,
       y: top,
       font: fonts.bold,
       size: 10,
-      color: highlight ? GREEN : WHITE,
+      color: highlight ? GOLD : WHITE,
     });
   }
 
-  cursor.y = top - blockHeight;
-  cursor.page.drawLine({
-    start: { x: MARGIN, y: cursor.y + 6 },
-    end: { x: PAGE_WIDTH - MARGIN, y: cursor.y + 6 },
-    color: RULE,
-    thickness: 0.6,
-  });
+  cursor.y = cardBottom - 7;
 }
 
 /** pdf-lib embeds PNG and JPEG only; anything else falls back to the initials badge. */
@@ -193,18 +222,10 @@ export async function buildGamerProfilePdf(gamer: PublicGamerProfile, siteUrl: s
 
   const cursor: Cursor = { page: newPage(document), y: PAGE_HEIGHT - MARGIN };
 
-  // Masthead
-  cursor.page.drawRectangle({ x: 0, y: PAGE_HEIGHT - 42, width: PAGE_WIDTH, height: 42, color: GREEN });
-  cursor.page.drawText("eFightersArena", { x: MARGIN, y: PAGE_HEIGHT - 28, font: fonts.bold, size: 14, color: rgb(0.02, 0.08, 0.05) });
-  const badge = gamer.verified ? "VERIFIED PLAYER PROFILE" : "PLAYER PROFILE";
-  cursor.page.drawText(badge, {
-    x: PAGE_WIDTH - MARGIN - fonts.bold.widthOfTextAtSize(badge, 8),
-    y: PAGE_HEIGHT - 26,
-    font: fonts.bold,
-    size: 8,
-    color: rgb(0.02, 0.08, 0.05),
-  });
-  cursor.y = PAGE_HEIGHT - 96;
+  // A thin crimson rule tops every page; the eyebrow names the document.
+  const badge = gamer.verified ? "VERIFIED ESPORTS CAREER PROFILE" : "ESPORTS CAREER PROFILE";
+  cursor.page.drawText(badge, { x: MARGIN, y: PAGE_HEIGHT - 64, font: fonts.bold, size: 8, color: ACCENT });
+  cursor.y = PAGE_HEIGHT - 92;
 
   // Identity block, with the avatar on the right.
   const avatar = await embedAvatar(document, gamer.avatarUrl);
@@ -256,20 +277,23 @@ export async function buildGamerProfilePdf(gamer: PublicGamerProfile, siteUrl: s
   cursor.y -= 62;
 
   if (gamer.bio) {
-    drawSectionTitle(document, cursor, "About", fonts);
+    drawSectionTitle(document, cursor, "About", fonts, "Profile");
     drawParagraph(document, cursor, gamer.bio, { font: fonts.regular, size: 10, color: WHITE, lineGap: 5 });
   }
 
   if (gamer.games.length > 0) {
-    drawSectionTitle(document, cursor, "Games", fonts);
+    drawSectionTitle(document, cursor, "Games", fonts, "Competitive titles");
     for (const entry of gamer.games) {
       const detail = [entry.primaryRole, entry.platform].filter(Boolean).join(" · ") || null;
-      drawRow(document, cursor, entry.game, detail, entry.inGameName, fonts, false);
+      // Matches the profile page: the handle is already in the header, so only an
+      // in-game name that actually differs is worth a column of its own.
+      const alias = entry.inGameName === gamer.handle ? null : entry.inGameName;
+      drawRow(document, cursor, entry.game, detail, alias, fonts, false);
     }
   }
 
   if (gamer.placements.length > 0) {
-    drawSectionTitle(document, cursor, "Tournament results", fonts);
+    drawSectionTitle(document, cursor, "Tournament results", fonts, "Competitive record");
     for (const entry of gamer.placements) {
       const sub = [entry.gameName, entry.year ? String(entry.year) : null].filter(Boolean).join(" · ");
       drawRow(
@@ -285,7 +309,7 @@ export async function buildGamerProfilePdf(gamer: PublicGamerProfile, siteUrl: s
   }
 
   if (gamer.events.length > 0) {
-    drawSectionTitle(document, cursor, "Competition record", fonts);
+    drawSectionTitle(document, cursor, "Competition record", fonts, "Match results");
     for (const event of gamer.events) {
       const sub = [event.gameName, event.divisionName].filter(Boolean).join(" · ");
       const record = event.played > 0 ? `${event.wins}W-${event.losses}L` : placementLabel(event.rank);
@@ -298,22 +322,29 @@ export async function buildGamerProfilePdf(gamer: PublicGamerProfile, siteUrl: s
     .map((category) => ({ category, items: gamer.achievements.filter((entry) => entry.category === category) }))
     .filter((group) => group.items.length > 0);
   for (const group of groups) {
-    drawSectionTitle(document, cursor, achievementGroupTitles[group.category], fonts);
+    const development = group.category === "coaching" || group.category === "player_developed";
+    drawSectionTitle(
+      document,
+      cursor,
+      achievementGroupTitles[group.category],
+      fonts,
+      development ? "Coaching & mentorship" : "Career record",
+    );
     for (const entry of group.items) {
       const sub = [entry.detail, entry.gameName].filter(Boolean).join(" · ");
-      drawRow(document, cursor, entry.title, sub || null, entry.yearLabel ?? "", fonts, false);
+      drawRow(document, cursor, entry.title, sub || null, entry.yearLabel ?? "", fonts, false, development ? MINT : undefined);
     }
   }
 
   if (gamer.teams.length > 0) {
-    drawSectionTitle(document, cursor, "Teams", fonts);
+    drawSectionTitle(document, cursor, "Teams", fonts, "Rosters");
     for (const team of gamer.teams) {
       drawRow(document, cursor, team.name, team.isLeader ? "Team leader" : team.role, team.tag, fonts, false);
     }
   }
 
   if (gamer.sponsors.length > 0) {
-    drawSectionTitle(document, cursor, "Sponsors", fonts);
+    drawSectionTitle(document, cursor, "Sponsors", fonts, "Partners");
     for (const sponsor of gamer.sponsors) {
       drawRow(document, cursor, sponsor.name, sponsor.category, "", fonts, false);
     }
@@ -324,14 +355,15 @@ export async function buildGamerProfilePdf(gamer: PublicGamerProfile, siteUrl: s
   const pages = document.getPages();
   pages.forEach((page, index) => {
     page.drawLine({ start: { x: MARGIN, y: 58 }, end: { x: PAGE_WIDTH - MARGIN, y: 58 }, color: RULE, thickness: 0.6 });
-    page.drawText(sanitize(profileUrl), { x: MARGIN, y: 42, font: fonts.bold, size: 8, color: GREEN });
-    page.drawText(`Generated ${new Date().toISOString().slice(0, 10)}`, { x: MARGIN, y: 30, font: fonts.regular, size: 7, color: MUTED });
-    const pageLabel = `Page ${index + 1} of ${pages.length}`;
+    const footerLabel = sanitize(`${gamer.handle}  |  COMPETITIVE ESPORTS PROFILE`).toUpperCase();
+    page.drawText(footerLabel, { x: MARGIN, y: 42, font: fonts.regular, size: 8, color: MUTED });
+    page.drawText(sanitize(profileUrl), { x: MARGIN, y: 30, font: fonts.regular, size: 7, color: GOLD });
+    const pageLabel = String(index + 1).padStart(2, "0");
     page.drawText(pageLabel, {
-      x: PAGE_WIDTH - MARGIN - fonts.regular.widthOfTextAtSize(pageLabel, 7),
-      y: 30,
-      font: fonts.regular,
-      size: 7,
+      x: PAGE_WIDTH - MARGIN - fonts.bold.widthOfTextAtSize(pageLabel, 8),
+      y: 42,
+      font: fonts.bold,
+      size: 8,
       color: MUTED,
     });
   });

@@ -77,6 +77,8 @@ export type PublicGamerAchievement = {
 
 export type PublicGamerProfile = PublicGamerSummary & {
   bio: string | null;
+  /** Set when a designed PDF has been supplied for this player; it replaces the generated one. */
+  profilePdfUrl: string | null;
   memberSince: number;
   games: Array<{ game: string; inGameName: string; primaryRole: string | null; platform: string | null; verified: boolean }>;
   totals: { events: number; played: number; wins: number; losses: number; titles: number; podiums: number };
@@ -106,6 +108,7 @@ const baseSelection = {
   displayName: gamerProfiles.displayName,
   bio: gamerProfiles.bio,
   avatarUrl: gamerProfiles.avatarUrl,
+  profilePdfUrl: gamerProfiles.profilePdfUrl,
   rankingPoints: gamerProfiles.rankingPoints,
   verificationStatus: gamerProfiles.verificationStatus,
   createdAt: gamerProfiles.createdAt,
@@ -432,6 +435,7 @@ async function getGamerProfileData(
     verified: profile.verificationStatus === "verified",
     avatarUrl: profile.avatarUrl,
     bio: profile.bio,
+    profilePdfUrl: profile.profilePdfUrl,
     memberSince: profile.createdAt.getFullYear(),
     games: gameRows,
     totals,

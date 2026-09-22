@@ -1,0 +1,1 @@
+ALTER TABLE "gamer_profiles" ADD COLUMN "profile_pdf_url" text;
