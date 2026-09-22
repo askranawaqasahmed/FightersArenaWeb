@@ -1,49 +1,13 @@
 "use client";
 
+import type { ApiSlide } from "@/lib/content-studio-data";
+
 import { Bold, Eye, FileText, Heading2, ImagePlus, Italic, Link2, List, Pencil, Plus, Save, Send, Trash2, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import { MediaUploadField, type UploadedMedia } from "./media-upload-field";
+import { MediaUploadField } from "./media-upload-field";
 
-export const contentStudioStorageKey = "fighters-arena:content-studio";
-export const contentStudioChangeEvent = "fighters-arena:content-studio-change";
-
-export type ContentAttachment = Pick<UploadedMedia, "key" | "url" | "mimeType" | "sizeBytes"> & { name: string };
-export type ContentArticle = { id: string; title: string; slug: string; excerpt: string; body: string; attachments: ContentAttachment[]; status: "draft" | "published"; updatedAt: string };
-export type HomepageSlide = { id: string; eyebrow: string; title: string; summary: string; imageUrl: string; imageAlt: string; ctaLabel: string; ctaUrl: string; status: "draft" | "published"; order: number };
-export type ContentStudioData = { articles: ContentArticle[]; slides: HomepageSlide[] };
-
-export const defaultContentStudioData: ContentStudioData = {
-  articles: [{ id: "platform-launch", title: "Welcome to Fighters Arena", slug: "welcome-to-fighters-arena", excerpt: "Pakistan's verified competitive gaming platform is now live.", body: "## The arena is open\n\nCreate your gamer profile, enter competitions, and build a verified competitive history.", attachments: [], status: "published", updatedAt: "2026-08-18" }],
-  slides: [{ id: "default-hero", eyebrow: "Pakistan's competitive gaming platform", title: "Own your game. Build your legacy.", summary: "One verified identity for every gamer, event and achievement.", imageUrl: "/images/arena-hero.png", imageAlt: "Esports competitors facing a championship arena stage", ctaLabel: "Explore events", ctaUrl: "/tournaments", status: "published", order: 1 }],
-};
-
-type ApiSlide = {
-  id: string;
-  eyebrow: string | null;
-  title: string;
-  summary: string | null;
-  imageUrl: string | null;
-  imageAlt: string | null;
-  ctaLabel: string | null;
-  ctaUrl: string | null;
-  sequence: number;
-  published?: boolean;
-};
-
-export function slideFromApi(slide: ApiSlide): HomepageSlide {
-  return {
-    id: slide.id,
-    eyebrow: slide.eyebrow ?? "",
-    title: slide.title,
-    summary: slide.summary ?? "",
-    imageUrl: slide.imageUrl ?? "",
-    imageAlt: slide.imageAlt ?? "",
-    ctaLabel: slide.ctaLabel ?? "Explore events",
-    ctaUrl: slide.ctaUrl ?? "/tournaments",
-    status: slide.published === false ? "draft" : "published",
-    order: slide.sequence,
-  };
-}
+import { contentStudioStorageKey, contentStudioChangeEvent, defaultContentStudioData, slideFromApi, type ContentArticle, type HomepageSlide, type ContentStudioData } from "@/lib/content-studio-data";
+export { contentStudioStorageKey, contentStudioChangeEvent, defaultContentStudioData, slideFromApi, type ContentAttachment, type ContentArticle, type HomepageSlide, type ContentStudioData } from "@/lib/content-studio-data";
 
 function slideToApi(slide: HomepageSlide, status: HomepageSlide["status"]) {
   return {
@@ -72,9 +36,8 @@ export function getContentStudioSnapshot() {
   return window.localStorage.getItem(contentStudioStorageKey) ?? "";
 }
 
-export function normalizeContentStudioData(value: ContentStudioData): ContentStudioData {
-  return { ...value, articles: value.articles.map((article) => ({ ...article, attachments: article.attachments ?? [] })) };
-}
+import { normalizeContentStudioData } from "@/lib/content-studio-data";
+export { normalizeContentStudioData } from "@/lib/content-studio-data";
 
 function slugify(value: string) {
   return value.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");

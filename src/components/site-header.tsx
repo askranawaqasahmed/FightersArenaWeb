@@ -1,29 +1,28 @@
+"use client";
+
 import Link from "next/link";
-import { LayoutDashboard, Search } from "lucide-react";
+import { usePathname } from "next/navigation";
+import { ArrowUpRight, Menu, X } from "lucide-react";
+import { useState } from "react";
 import { Brand } from "./brand";
 
-const navigation = [
-  ["Games", "/games"],
-  ["Gamers", "/gamers"],
-  ["Tournaments", "/tournaments"],
-  ["Rankings", "/gamers#rankings"],
-  ["Developers", "/developers"],
-];
+const navigation = [["Discover", "/"], ["Games", "/games"], ["Tournaments", "/tournaments"], ["Players", "/gamers"]];
 
 export function SiteHeader() {
-  return (
-    <header className="site-header">
-      <div className="container header-inner">
-        <Brand />
-        <nav className="site-nav" aria-label="Main navigation">
-          {navigation.map(([label, href]) => <Link key={href} href={href}>{label}</Link>)}
-        </nav>
-        <div className="header-actions">
-          <button className="button button-secondary button-small" aria-label="Search"><Search size={16} /> Search</button>
-          <Link className="button button-secondary button-small admin-shortcut" href="/admin"><LayoutDashboard size={15} /> Admin portal</Link>
-          <Link className="button button-primary button-small join-button" href="/login">Join arena</Link>
-        </div>
+  const pathname = usePathname();
+  const [open, setOpen] = useState(false);
+  return <header className="site-header">
+    <a className="skip-link" href="#main-content">Skip to content</a>
+    <div className="container header-inner">
+      <Brand />
+      <nav className={`site-nav${open ? " is-open" : ""}`} id="main-navigation" aria-label="Main navigation">
+        {navigation.map(([label, href]) => <Link onClick={() => setOpen(false)} aria-current={(href === "/" ? pathname === href : pathname.startsWith(href)) ? "page" : undefined} key={href} href={href}>{label}</Link>)}
+      </nav>
+      <div className="header-actions">
+        <Link className="header-login" href="/login">Log in</Link>
+        <Link className="button button-primary button-small join-button" href="/login">Join the arena <ArrowUpRight size={15} /></Link>
+        <button className="mobile-menu" aria-label={open ? "Close navigation" : "Open navigation"} aria-expanded={open} aria-controls="main-navigation" onClick={() => setOpen(!open)}>{open ? <X size={22} /> : <Menu size={22} />}</button>
       </div>
-    </header>
-  );
+    </div>
+  </header>;
 }

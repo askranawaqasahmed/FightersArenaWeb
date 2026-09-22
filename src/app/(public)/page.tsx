@@ -1,9 +1,10 @@
 import Link from "next/link";
-import { BadgeCheck } from "lucide-react";
+import { ArrowUpRight, BadgeCheck, Gamepad2, Trophy, Users, Swords } from "lucide-react";
 import { count, eq, inArray } from "drizzle-orm";
 import { db } from "@/db/client";
 import { gamerProfiles, games, sponsors, tournaments } from "@/db/schema";
-import { HomepageHero, PublishedContentSection } from "@/components/homepage-managed-content";
+import { PublishedContentSection } from "@/components/homepage-managed-content";
+import { HomepageHero } from "@/components/homepage-hero";
 import { ManagedGameGrid } from "@/components/managed-game-directory";
 import { SectionHeader } from "@/components/section-header";
 import { TournamentCard } from "@/components/tournament-card";
@@ -38,24 +39,24 @@ export default async function HomePage() {
   ]);
 
   const stats = [
-    { label: "Registered players", value: counts.players.toLocaleString() },
-    { label: "Competitions", value: counts.events.toLocaleString() },
-    { label: "Games", value: counts.games.toLocaleString() },
+    { label: "Players in the arena", value: counts.players.toLocaleString(), icon: Users },
+    { label: "Competitions", value: counts.events.toLocaleString(), icon: Trophy },
+    { label: "Games. Endless rivalries.", value: counts.games.toLocaleString(), icon: Gamepad2 },
   ];
 
   return (
     <>
       <HomepageHero />
 
-      <div className="container stats-strip"><div className="stats-grid">{stats.map((stat) => <div className="stat" key={stat.label}><div className="stat-value">{stat.value}</div><div className="stat-label">{stat.label}</div></div>)}</div></div>
+      <div className="arena-stats"><div className="container"><div className="arena-stats-intro"><Swords size={24} /><span>ONE COMMUNITY.<br /><strong>BUILT TO COMPETE.</strong></span></div>{stats.map((stat) => <div className="arena-stat" key={stat.label}><stat.icon size={22} /><div><strong>{stat.value}</strong><span>{stat.label}</span></div></div>)}</div></div>
 
-      <section className="section"><div className="container"><SectionHeader eyebrow="Game directory" title="Choose your arena" href="/games" />
+      <section className="section"><div className="container"><SectionHeader eyebrow="Find your next obsession" title="Choose your arena" href="/games" />
         {gameRows.length > 0
-          ? <ManagedGameGrid games={gameRows.slice(0, 8)} />
+          ? <ManagedGameGrid games={gameRows} />
           : <p className="muted">No games in the catalogue yet.</p>}
       </div></section>
 
-      <section className="section section-tinted"><div className="container"><SectionHeader eyebrow="Competition central" title="Live and upcoming" href="/tournaments" />
+      <section className="section section-tinted"><div className="container"><SectionHeader eyebrow="Make every match count" title="The competition starts here" href="/tournaments" />
         {tournamentRows.length > 0
           ? <div className="tournament-list">{tournamentRows.map((tournament) => <TournamentCard key={tournament.slug} tournament={tournament} />)}</div>
           : <p className="muted">No public competitions yet. Published and live events appear here automatically.</p>}
@@ -72,6 +73,7 @@ export default async function HomePage() {
       {counts.sponsors.length > 0 && (
         <div className="sponsor-strip"><div className="container sponsors"><span className="eyebrow">Trusted by</span>{counts.sponsors.map((sponsor) => <span key={sponsor}>{sponsor}</span>)}</div></div>
       )}
+      <section className="container arena-join"><div><span className="eyebrow">Your next chapter</span><h2>Don’t just watch the game.<br /><span>Become part of it.</span></h2><p>Build your player profile and find your place in the community.</p></div><Link className="button button-primary" href="/login">Join the arena <ArrowUpRight size={18} /></Link></section>
     </>
   );
 }

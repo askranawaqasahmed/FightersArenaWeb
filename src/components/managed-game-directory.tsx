@@ -4,19 +4,9 @@ import Link from "next/link";
 import { Search } from "lucide-react";
 import { useState } from "react";
 import type { PublicGame } from "@/lib/game-data";
+import { gameArtwork } from "@/lib/game-art";
 
-const gameVisuals: Record<string, { accent: string; secondary: string; preview: string }> = {
-  "kof-98-um": { accent: "#e52dff", secondary: "#33204d", preview: "fighting" },
-  "street-fighter-6": { accent: "#1e90ff", secondary: "#19354d", preview: "fighting" },
-  "fatal-fury-cotw": { accent: "#ffb020", secondary: "#3b301b", preview: "fighting" },
-};
-
-export function gameVisual(game: Pick<PublicGame, "slug" | "genre">) {
-  if (gameVisuals[game.slug]) return gameVisuals[game.slug];
-  const genre = game.genre.toLowerCase();
-  const preview = genre.includes("fight") ? "fighting" : genre.includes("shooter") || genre.includes("fps") ? "tactical" : "generic";
-  return { accent: "#1e90ff", secondary: "#19354d", preview };
-}
+import { gameVisual } from "@/lib/game-visual";
 
 function playerLabel(game: PublicGame) {
   if (game.players > 0) return `${game.players.toLocaleString()} ${game.players === 1 ? "player" : "players"}`;
@@ -27,17 +17,18 @@ function GameGrid({ games }: { games: PublicGame[] }) {
   return <div className="game-grid">{games.map((game) => {
     const mark = game.name.split(/\s+/).map((word) => word[0]).join("").slice(0, 2).toUpperCase();
     const visual = gameVisual(game);
+    const artwork = gameArtwork(game);
     return <Link
-      className={`game-card game-preview-${visual.preview}`}
+      className={`game-card game-preview-${visual.preview}${artwork ? " game-card-illustrated" : ""}`}
       href={`/games/${game.slug}`}
       key={game.slug}
       style={{
         "--game-color": visual.accent,
         "--game-secondary": visual.secondary,
-        ...(game.imageUrl ? { backgroundImage: `url(${game.imageUrl})` } : {}),
+        ...(artwork ? { backgroundImage: `url("${artwork}")` } : {}),
       } as React.CSSProperties}
     >
-      {!game.imageUrl && <span className="game-preview-art" aria-hidden="true"><span>{visual.preview === "fighting" ? "VS" : mark}</span></span>}
+      {!artwork && <span className="game-preview-art" aria-hidden="true"><span>{visual.preview === "fighting" ? "VS" : mark}</span></span>}
       <span className="game-genre">{game.genre}</span>
       <span className="game-name">{game.name}</span>
       <span className="game-count">{playerLabel(game)}</span>

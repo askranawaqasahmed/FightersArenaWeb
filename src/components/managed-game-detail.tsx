@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import { gameVisual } from "./managed-game-directory";
+import { gameVisual } from "@/lib/game-visual";
 import type { PublicGame } from "@/lib/game-data";
+import { gameArtwork } from "@/lib/game-art";
 
 export function ManagedGameDetail({ game, events }: { game: PublicGame; events: number }) {
   const visual = gameVisual(game);
+  const artwork = gameArtwork(game);
   const mark = game.name.split(/\s+/).map((word) => word[0]).join("").slice(0, 2).toUpperCase();
   const mode = game.teamSize > 1 ? "team" : "individual";
 
@@ -15,7 +17,7 @@ export function ManagedGameDetail({ game, events }: { game: PublicGame; events: 
       style={{
         "--game-color": visual.accent,
         "--game-secondary": visual.secondary,
-        ...(game.imageUrl ? { backgroundImage: `linear-gradient(90deg, rgba(10,12,16,.88), rgba(10,12,16,.35)), url(${game.imageUrl})`, backgroundSize: "cover", backgroundPosition: "center" } : {}),
+        ...(artwork ? { backgroundImage: `linear-gradient(90deg, rgba(10,12,16,.88), rgba(10,12,16,.35)), url("${artwork}")`, backgroundSize: "cover", backgroundPosition: "center" } : {}),
       } as React.CSSProperties}
     >
       <div>
@@ -26,7 +28,7 @@ export function ManagedGameDetail({ game, events }: { game: PublicGame; events: 
           Configured for {mode} competition.
         </p>
       </div>
-      {!game.imageUrl && <div className="game-detail-art" aria-hidden="true"><span>{visual.preview === "fighting" ? "VS" : mark}</span></div>}
+      {!artwork && <div className="game-detail-art" aria-hidden="true"><span>{visual.preview === "fighting" ? "VS" : mark}</span></div>}
     </section>
     <div className="section-compact"><div className="stats-grid">
       <div className="stat"><div className="stat-value">{game.players.toLocaleString()}</div><div className="stat-label">Registered players</div></div>

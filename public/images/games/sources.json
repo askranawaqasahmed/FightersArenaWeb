@@ -1,0 +1,82 @@
+[
+  {
+    "file": "kof-95.jpg",
+    "source": "https://www.snk-corp.co.jp/official/akeaka/wp-content/uploads/2022/07/kof95_top.jpg",
+    "page": "https://www.snk-corp.co.jp/official/akeaka/titles/kof95/"
+  },
+  {
+    "file": "kof-97.jpg",
+    "source": "https://www.snk-corp.co.jp/official/akeaka/wp-content/uploads/2022/07/kof97_top.jpg",
+    "page": "https://www.snk-corp.co.jp/official/akeaka/titles/kof97/"
+  },
+  {
+    "file": "kof-98-um.jpg",
+    "source": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/222420/header.jpg?t=1727159953",
+    "page": "https://store.steampowered.com/app/222420/"
+  },
+  {
+    "file": "kof-99.jpg",
+    "source": "https://www.snk-corp.co.jp/official/akeaka/wp-content/uploads/2022/07/kof99_top.jpg",
+    "page": "https://www.snk-corp.co.jp/official/akeaka/titles/kof99/"
+  },
+  {
+    "file": "kof-2000.jpg",
+    "source": "https://www.snk-corp.co.jp/official/akeaka/wp-content/uploads/2022/07/kof2000_top.jpg",
+    "page": "https://www.snk-corp.co.jp/official/akeaka/titles/kof2000/"
+  },
+  {
+    "file": "kof-2002.jpg",
+    "source": "https://www.snk-corp.co.jp/official/akeaka/wp-content/uploads/2022/07/kof2002_top.jpg",
+    "page": "https://www.snk-corp.co.jp/official/akeaka/titles/kof2002/"
+  },
+  {
+    "file": "kof-xiii.jpg",
+    "source": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/222940/header.jpg?t=1752107845",
+    "page": "https://store.steampowered.com/app/222940/"
+  },
+  {
+    "file": "kof-xiv.jpg",
+    "source": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/571260/header.jpg?t=1727160512",
+    "page": "https://store.steampowered.com/app/571260/"
+  },
+  {
+    "file": "kof-xv-hero.jpg",
+    "source": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1498570/ss_a78f803bb251e541225b0d82b8c7ce30fc823bdd.1920x1080.jpg?t=1742873915",
+    "page": "https://store.steampowered.com/app/1498570/"
+  },
+  {
+    "file": "kof-xv.jpg",
+    "source": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1498570/header.jpg?t=1742873915",
+    "page": "https://store.steampowered.com/app/1498570/"
+  },
+  {
+    "file": "street-fighter-iv.jpg",
+    "source": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/21660/header.jpg?t=1644282876",
+    "page": "https://store.steampowered.com/app/21660/"
+  },
+  {
+    "file": "street-fighter-v.jpg",
+    "source": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/310950/header.jpg?t=1759109525",
+    "page": "https://store.steampowered.com/app/310950/"
+  },
+  {
+    "file": "street-fighter-6-hero.jpg",
+    "source": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1364780/ss_387137f8cccb048c35a8685634372e97785d40aa.1920x1080.jpg?t=1789611360",
+    "page": "https://store.steampowered.com/app/1364780/"
+  },
+  {
+    "file": "street-fighter-6.jpg",
+    "source": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1364780/header.jpg?t=1789611360",
+    "page": "https://store.steampowered.com/app/1364780/"
+  },
+  {
+    "file": "fatal-fury-cotw-hero.jpg",
+    "source": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2492040/ss_ccc4b1fb9b32b96894e9e44b1ee76b6f89edf8a7.1920x1080.jpg?t=1789124555",
+    "page": "https://store.steampowered.com/app/2492040/"
+  },
+  {
+    "file": "fatal-fury-cotw.jpg",
+    "source": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2492040/de9124581ed4a282e3f88e60288b9820f16d3ffc/header.jpg?t=1789124555",
+    "page": "https://store.steampowered.com/app/2492040/"
+  }
+]
